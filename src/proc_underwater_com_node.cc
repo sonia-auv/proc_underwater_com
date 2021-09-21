@@ -31,11 +31,13 @@ namespace proc_underwater_com
     ProcUnderwaterComNode::ProcUnderwaterComNode(const ros::NodeHandlePtr &_nh)
         : nh_(_nh)
     {
+        underwaterComSubscriber_ = nh_->subscribe("/provider_underwater_com/receive_msgs", 100, &ProcUnderwaterComNode::UnderwaterComInterpreterCallback, this);
     }
 
     // Node Destructor
     ProcUnderwaterComNode::~ProcUnderwaterComNode(){}
 
+    // Spin
     void ProcUnderwaterComNode::Spin()
     {
         ros::Rate r(1); // 1 Hz
@@ -46,5 +48,20 @@ namespace proc_underwater_com
             ros::spinOnce();
             r.sleep();
         }
+    }
+
+    void ProcUnderwaterComNode::UnderwaterComInterpreterCallback(const std_msgs::String &msg)
+    {
+
+    }
+
+    void ProcUnderwaterComNode::StateKillCallback(const sonia_common::KillSwitchMsg &msg)
+    {
+
+    }
+
+    void ProcUnderwaterComNode::StateMissionCallback(const sonia_common::MissionSwitchMsg &msg)
+    {
+        
     }
 }

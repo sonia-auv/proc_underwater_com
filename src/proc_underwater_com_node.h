@@ -27,6 +27,10 @@
 #define PROC_UNDERWATER_COM_NODE
 
 #include <ros/ros.h>
+#include <std_msgs/String.h>
+
+#include "sonia_common/KillSwitchMsg.h"
+#include "sonia_common/MissionSwitchMsg.h"
 
 namespace proc_underwater_com {
 
@@ -41,7 +45,17 @@ class ProcUnderwaterComNode
 
     private:
 
+        void UnderwaterComInterpreterCallback(const std_msgs::String &msg);
+        void StateKillCallback(const sonia_common::KillSwitchMsg &msg);
+        void StateMissionCallback(const sonia_common::MissionSwitchMsg &msg);
+        
         ros::NodeHandlePtr nh_;
+
+        ros::Subscriber underwaterComSubscriber_;
+        ros::Subscriber stateKillSubcrisber_;
+        ros::Subscriber stateMissionSubcrisber_;
+        ros::Subscriber depthSubcrisber_;
+        ros::Publisher underwaterComPublisher_;
 
 };
 }
