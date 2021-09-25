@@ -28,9 +28,12 @@
 
 #include <ros/ros.h>
 #include <std_msgs/String.h>
+#include <std_msgs/Float32.h>
 
+#include "sonia_common/ModemM64_definitions.h"
 #include "sonia_common/KillSwitchMsg.h"
 #include "sonia_common/MissionSwitchMsg.h"
+#include "sonia_common/ModemPacket.h"
 
 namespace proc_underwater_com {
 
@@ -46,8 +49,16 @@ class ProcUnderwaterComNode
     private:
 
         void UnderwaterComInterpreterCallback(const std_msgs::String &msg);
+        void SendMessage();
+        bool GetSensorState(sonia_common::ModemPacket &srv);
+
+        void AuvStateKillInterpreter(const bool state);
+        void AuvStateMissionInterpreter(const bool state);
+        void AuvDepthInterpreter(const float_t data);
+
         void StateKillCallback(const sonia_common::KillSwitchMsg &msg);
         void StateMissionCallback(const sonia_common::MissionSwitchMsg &msg);
+        void DepthCallback(const std_msgs::Float32 &msg);
         
         ros::NodeHandlePtr nh_;
 
@@ -55,7 +66,23 @@ class ProcUnderwaterComNode
         ros::Subscriber stateKillSubcrisber_;
         ros::Subscriber stateMissionSubcrisber_;
         ros::Subscriber depthSubcrisber_;
+
         ros::Publisher underwaterComPublisher_;
+        ros::Publisher auvStateKillPublisher_;
+        ros::Publisher auvStateMissionPublisher_;
+        ros::Publisher auvDepthPublisher_;
+
+        ros::ServiceClient underwaterComClient_;
+
+        sonia_common::KillSwitchMsg stateKill_;
+        sonia_common::MissionSwitchMsg stateMission_;
+        std_msgs::Float32 depth_;
+
+        bool lastStateKill_ = false;
+        bool lastStateMission_ = false;
+        float_t lastDepth_ = 0.0;
+
+        char role_ = ROLE_MASTER;
 
 };
 }

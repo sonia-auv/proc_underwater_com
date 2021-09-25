@@ -34,6 +34,22 @@ namespace proc_underwater_com
         underwaterComSubscriber_ = nh_->subscribe("/provider_underwater_com/receive_msgs", 100, &ProcUnderwaterComNode::UnderwaterComInterpreterCallback, this);
         stateKillSubcrisber_ = nh_->subscribe("/provider_kill_mission/kill_switch_msg", 100, &ProcUnderwaterComNode::StateKillCallback, this);
         stateMissionSubcrisber_ = nh_->subscribe("/provider_kill_mission/mission_switch_msg", 100, &ProcUnderwaterComNode::StateMissionCallback, this);
+        depthSubcrisber_ = nh_->subscribe("/provider_depth/depth", 100, &ProcUnderwaterComNode::DepthCallback, this);
+
+        underwaterComPublisher_ = nh_->advertise<std_msgs::String>("/proc_underwater_com/send_msgs", 100);
+        auvStateKillPublisher_ = nh_->advertise<sonia_common::KillSwitchMsg>("/proc_underwater_com/other_auv_state_kill", 100);
+        auvStateMissionPublisher_ = nh_->advertise<sonia_common::MissionSwitchMsg>("/proc_underwater_com/other_auv_state_mission", 100);
+        auvDepthPublisher_ = nh_->advertise<std_msgs::Float32>("/proc_underwater_com/other_auv_depth", 100);
+
+        underwaterComClient_ = nh_->serviceClient<sonia_common::ModemPacket>("/provider_underwater_com/request");
+
+        sonia_common::ModemPacket srv;
+        srv.request.cmd = CMD_GET_SETTINGS;
+
+        if(GetSensorState(srv))
+        {
+            role_ = srv.response.role;
+        }
     }
 
     // Node Destructor
@@ -46,7 +62,10 @@ namespace proc_underwater_com
 
         while(ros::ok())
         {
-            ROS_INFO_STREAM("Node is initialised");
+            if(role_ == ROLE_MASTER)
+            {
+                SendMessage();
+            }
             ros::spinOnce();
             r.sleep();
         }
@@ -54,16 +73,73 @@ namespace proc_underwater_com
 
     void ProcUnderwaterComNode::UnderwaterComInterpreterCallback(const std_msgs::String &msg)
     {
+        bool auvStateKill = (std::stoi((msg.data.substr(5,1))) != 0);
+        bool auvStateMission = (std::stoi((msg.data.substr(7,1))) != 0);
+        float_t auvDepth = (std::stol(msg.data.substr(1,3))) / 100.0;
 
+        AuvStateKillInterpreter(auvStateKill);
+        AuvStateMissionInterpreter(auvStateMission);
+        AuvDepthInterpreter(auvDepth);
+
+        if(role_ == ROLE_SLAVE)
+        {
+            SendMessage();
+        }
+    }
+    
+    void ProcUnderwaterComNode::SendMessage()
+    {
+        std_msgs::String packet;
+        
+        packet.data = "D";
+
+        underwaterComPublisher_.publish(packet);
+    }
+
+    bool ProcUnderwaterComNode::GetSensorState(sonia_common::ModemPacket &srv)
+    {
+        if(underwaterComClient_.call(srv))
+        {
+            ROS_INFO_STREAM("Service called");
+            return true;
+        }
+        else
+        {
+            ROS_ERROR_STREAM("Service can't be called");
+            return false;
+        }
+    }
+
+    void ProcUnderwaterComNode::AuvStateKillInterpreter(const bool state)
+    {
+        stateKill_.state = state;
+        auvStateKillPublisher_.publish(stateKill_);
+    }
+
+    void ProcUnderwaterComNode::AuvStateMissionInterpreter(const bool state)
+    {
+        stateMission_.state = state;
+        auvStateMissionPublisher_.publish(stateMission_);
+    }
+
+    void ProcUnderwaterComNode::AuvDepthInterpreter(const float_t data)
+    {
+        depth_.data = data;
+        auvDepthPublisher_.publish(depth_);
     }
 
     void ProcUnderwaterComNode::StateKillCallback(const sonia_common::KillSwitchMsg &msg)
     {
-
+        lastStateKill_ = msg.state;
     }
 
     void ProcUnderwaterComNode::StateMissionCallback(const sonia_common::MissionSwitchMsg &msg)
     {
-        
+        lastStateMission_ = msg.state;
+    }
+
+    void ProcUnderwaterComNode::DepthCallback(const std_msgs::Float32 &msg)
+    {
+        lastDepth_ = msg.data;
     }
 }
