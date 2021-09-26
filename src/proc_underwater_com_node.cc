@@ -90,8 +90,11 @@ namespace proc_underwater_com
     void ProcUnderwaterComNode::SendMessage()
     {
         std_msgs::String packet;
+        uint16_t depth = (uint16_t)(lastDepth_ * 100.0);
+        uint8_t kill = (lastStateKill_) ? 1 : 0;
+        uint8_t mission = (lastStateMission_) ? 1 : 0;
         
-        packet.data = "D";
+        packet.data = "D" + std::to_string(depth) + "K" + std::to_string(kill) + "M" + std::to_string(mission);
 
         underwaterComPublisher_.publish(packet);
     }

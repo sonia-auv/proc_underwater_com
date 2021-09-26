@@ -78,9 +78,9 @@ class ProcUnderwaterComNode
         sonia_common::MissionSwitchMsg stateMission_;
         std_msgs::Float32 depth_;
 
-        bool lastStateKill_ = false;
+        bool lastStateKill_ = true;
         bool lastStateMission_ = false;
-        float_t lastDepth_ = 0.0;
+        float_t lastDepth_ = 4.95;
 
         char role_ = ROLE_MASTER;
 
