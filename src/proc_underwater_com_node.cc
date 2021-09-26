@@ -43,6 +43,8 @@ namespace proc_underwater_com
 
         underwaterComClient_ = nh_->serviceClient<sonia_common::ModemPacket>("/provider_underwater_com/request");
 
+        underwaterComClient_.waitForExistence();
+        
         sonia_common::ModemPacket srv;
         srv.request.cmd = CMD_GET_SETTINGS;
 
