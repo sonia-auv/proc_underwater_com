@@ -35,6 +35,9 @@
 #include "sonia_common/MissionSwitchMsg.h"
 #include "sonia_common/ModemPacket.h"
 
+#define LINK_UP 'y'
+#define LINK_DOWN 'n'
+
 namespace proc_underwater_com {
 
 class ProcUnderwaterComNode

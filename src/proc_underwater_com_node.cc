@@ -52,6 +52,10 @@ namespace proc_underwater_com
         {
             role_ = srv.response.role;
         }
+        else
+        {
+            ros::shutdown();
+        }
     }
 
     // Node Destructor
@@ -61,15 +65,26 @@ namespace proc_underwater_com
     void ProcUnderwaterComNode::Spin()
     {
         ros::Rate r(1); // 1 Hz
+        sonia_common::ModemPacket srv;
 
         while(ros::ok())
         {
-            if(role_ == ROLE_MASTER)
+            srv.request.cmd = CMD_GET_DIAGNOSTIC;
+            if(GetSensorState(srv))
             {
-                SendMessage();
+                if(role_ == ROLE_MASTER && srv.response.link == LINK_UP)
+                {
+                    SendMessage();
+                }
+                else
+                {
+                    srv.request.cmd = CMD_FLUSH;
+                    GetSensorState(srv);
+                }
             }
             ros::spinOnce();
             r.sleep();
+
         }
     }
 
