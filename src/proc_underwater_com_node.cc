@@ -76,7 +76,7 @@ namespace proc_underwater_com
                 {
                     SendMessage();
                 }
-                else
+                else if(srv.response.link == LINK_DOWN)
                 {
                     srv.request.cmd = CMD_FLUSH;
                     GetSensorState(srv);
@@ -84,7 +84,6 @@ namespace proc_underwater_com
             }
             ros::spinOnce();
             r.sleep();
-
         }
     }
 
