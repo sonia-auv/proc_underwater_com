@@ -45,17 +45,18 @@ namespace proc_underwater_com
 
         underwaterComClient_.waitForExistence();
         
-        sonia_common::ModemPacket srv;
+        /*sonia_common::ModemPacket srv;
         srv.request.cmd = CMD_GET_SETTINGS;
 
         if(GetSensorState(srv))
         {
             role_ = srv.response.role;
+            ROS_INFO_STREAM("Role is setup");
         }
         else
         {
             ros::shutdown();
-        }
+        }*/
     }
 
     // Node Destructor
@@ -70,17 +71,25 @@ namespace proc_underwater_com
         while(ros::ok())
         {
             srv.request.cmd = CMD_GET_DIAGNOSTIC;
+            ROS_INFO_STREAM("Getting diagnostic");
             if(GetSensorState(srv))
             {
+                ROS_INFO("Link is %c", srv.response.link);
                 if(role_ == ROLE_MASTER && srv.response.link == LINK_UP)
                 {
+                    ROS_INFO_STREAM("Sending a message to the salve");
                     SendMessage();
                 }
                 else if(srv.response.link == LINK_DOWN)
                 {
+                   ROS_INFO_STREAM("Link is down. Flushing queue"); 
                     srv.request.cmd = CMD_FLUSH;
                     GetSensorState(srv);
                 }
+            }
+            else
+            {
+                ROS_INFO_STREAM("The service has failed");
             }
             ros::spinOnce();
             r.sleep();
@@ -119,7 +128,7 @@ namespace proc_underwater_com
     {
         if(underwaterComClient_.call(srv))
         {
-            ROS_INFO_STREAM("Service called");
+            ROS_DEBUG_STREAM("Service called");
             return true;
         }
         else
