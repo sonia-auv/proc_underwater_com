@@ -45,7 +45,7 @@ namespace proc_underwater_com
 
         underwaterComClient_.waitForExistence();
         
-        /*sonia_common::ModemPacket srv;
+        sonia_common::ModemPacket srv;
         srv.request.cmd = CMD_GET_SETTINGS;
 
         if(GetSensorState(srv))
@@ -56,7 +56,7 @@ namespace proc_underwater_com
         else
         {
             ros::shutdown();
-        }*/
+        }
     }
 
     // Node Destructor
