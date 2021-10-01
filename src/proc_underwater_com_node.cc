@@ -71,7 +71,7 @@ namespace proc_underwater_com
 
         while(ros::ok())
         {
-            if(role_ == ROLE_MASTER && link_ == LINK_UP && received_message_)
+            if(role_ == ROLE_MASTER && link_ == LINK_UP)
             {
                 ROS_INFO_STREAM("Sending a message to the salve");
                 SendMessage();
