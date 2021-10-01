@@ -57,6 +57,8 @@ namespace proc_underwater_com
         {
             ros::shutdown();
         }
+
+        diagnostic_thread = std::thread(std::bind(&ProcUnderwaterComNode::Verify_Link, this));
     }
 
     // Node Destructor
@@ -66,30 +68,13 @@ namespace proc_underwater_com
     void ProcUnderwaterComNode::Spin()
     {
         ros::Rate r(1); // 1 Hz
-        sonia_common::ModemPacket srv;
 
         while(ros::ok())
         {
-            srv.request.cmd = CMD_GET_DIAGNOSTIC;
-            ROS_INFO_STREAM("Getting diagnostic");
-            if(GetSensorState(srv))
+            if(role_ == ROLE_MASTER && link_ == LINK_UP)
             {
-                ROS_INFO("Link is %c", srv.response.link);
-                if(role_ == ROLE_MASTER && srv.response.link == LINK_UP)
-                {
-                    ROS_INFO_STREAM("Sending a message to the salve");
-                    SendMessage();
-                }
-                else if(srv.response.link == LINK_DOWN)
-                {
-                   ROS_INFO_STREAM("Link is down. Flushing queue"); 
-                    srv.request.cmd = CMD_FLUSH;
-                    GetSensorState(srv);
-                }
-            }
-            else
-            {
-                ROS_INFO_STREAM("The service has failed");
+                ROS_INFO_STREAM("Sending a message to the salve");
+                SendMessage();
             }
             ros::spinOnce();
             r.sleep();
@@ -169,5 +154,28 @@ namespace proc_underwater_com
     void ProcUnderwaterComNode::DepthCallback(const std_msgs::Float32 &msg)
     {
         lastDepth_ = msg.data;
+    }
+
+    void ProcUnderwaterComNode::Verify_Link()
+    {
+        ros::Rate r(0.1); // 0.1 Hz
+        sonia_common::ModemPacket srv, flush_srv;
+        flush_srv.request.cmd = CMD_FLUSH;
+        srv.request.cmd = CMD_GET_DIAGNOSTIC;
+
+        while(!ros::isShuttingDown())
+        {
+            ROS_INFO_STREAM("Link is updated");
+            if(GetSensorState(srv))
+            {
+                link_ = (char) srv.response.link;
+            }
+            if(link_ == LINK_DOWN)
+            {
+                ROS_INFO_STREAM("Link is down. Flushing queue"); 
+                GetSensorState(flush_srv);
+            }
+            r.sleep();
+        }
     }
 }

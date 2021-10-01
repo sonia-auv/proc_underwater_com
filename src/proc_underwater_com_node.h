@@ -29,6 +29,8 @@
 #include <ros/ros.h>
 #include <std_msgs/String.h>
 #include <std_msgs/Float32.h>
+#include <thread>
+#include <mutex>
 
 #include "sonia_common/ModemM64_definitions.h"
 #include "sonia_common/KillSwitchMsg.h"
@@ -59,6 +61,8 @@ class ProcUnderwaterComNode
         void StateKillCallback(const sonia_common::KillSwitchMsg &msg);
         void StateMissionCallback(const sonia_common::MissionSwitchMsg &msg);
         void DepthCallback(const std_msgs::Float32 &msg);
+
+        void Verify_Link();
         
         ros::NodeHandlePtr nh_;
 
@@ -74,6 +78,8 @@ class ProcUnderwaterComNode
 
         ros::ServiceClient underwaterComClient_;
 
+        std::thread diagnostic_thread;
+
         sonia_common::KillSwitchMsg stateKill_;
         sonia_common::MissionSwitchMsg stateMission_;
         std_msgs::Float32 depth_;
@@ -83,6 +89,7 @@ class ProcUnderwaterComNode
         float_t lastDepth_ = 4.95;
 
         char role_ = ROLE_MASTER;
+        char link_ = LINK_UP;
 
 };
 }
