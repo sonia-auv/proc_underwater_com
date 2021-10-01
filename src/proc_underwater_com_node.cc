@@ -51,7 +51,7 @@ namespace proc_underwater_com
         if(GetSensorState(srv))
         {
             role_ = srv.response.role;
-            ROS_INFO_STREAM("Role is setup");
+            ROS_INFO("Role is setup, %c", role_);
         }
         else
         {
@@ -75,9 +75,6 @@ namespace proc_underwater_com
             {
                 ROS_INFO_STREAM("Sending a message to the salve");
                 SendMessage();
-                received_mutex.lock();
-                received_message_ = false;
-                received_mutex.unlock();
             }
             ros::spinOnce();
             r.sleep();
@@ -96,13 +93,8 @@ namespace proc_underwater_com
 
         if(role_ == ROLE_SLAVE)
         {
+            ROS_INFO_STREAM("Sending a message to the master");
             SendMessage();
-        }
-        else
-        {
-            received_mutex.lock();
-            received_message_ = true;
-            received_mutex.unlock();
         }
     }
     
