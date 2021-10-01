@@ -71,10 +71,13 @@ namespace proc_underwater_com
 
         while(ros::ok())
         {
-            if(role_ == ROLE_MASTER && link_ == LINK_UP)
+            if(role_ == ROLE_MASTER && link_ == LINK_UP && received_message_)
             {
                 ROS_INFO_STREAM("Sending a message to the salve");
                 SendMessage();
+                received_mutex.lock();
+                received_message_ = false;
+                received_mutex.unlock();
             }
             ros::spinOnce();
             r.sleep();
@@ -94,6 +97,12 @@ namespace proc_underwater_com
         if(role_ == ROLE_SLAVE)
         {
             SendMessage();
+        }
+        else
+        {
+            received_mutex.lock();
+            received_message_ = true;
+            received_mutex.unlock();
         }
     }
     

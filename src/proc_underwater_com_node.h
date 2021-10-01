@@ -79,6 +79,7 @@ class ProcUnderwaterComNode
         ros::ServiceClient underwaterComClient_;
 
         std::thread diagnostic_thread;
+        std::mutex received_mutex;
 
         sonia_common::KillSwitchMsg stateKill_;
         sonia_common::MissionSwitchMsg stateMission_;
@@ -90,6 +91,7 @@ class ProcUnderwaterComNode
 
         char role_ = ROLE_MASTER;
         char link_ = LINK_UP;
+        bool received_message_ = true;
 
 };
 }
