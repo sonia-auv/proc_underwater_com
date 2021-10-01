@@ -67,7 +67,7 @@ namespace proc_underwater_com
     // Spin
     void ProcUnderwaterComNode::Spin()
     {
-        ros::Rate r(1); // 1 Hz
+        ros::Rate r(0.2); // 0.2 Hz or 5 sec between each send
 
         while(ros::ok())
         {
