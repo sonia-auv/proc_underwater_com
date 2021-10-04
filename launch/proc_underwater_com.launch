@@ -1,0 +1,5 @@
+<launch>
+    <!-- load the proc -->
+    <node name="proc_underwater_com" pkg="proc_underwater_com" type="proc_underwater_com_node" output="screen"/>
+
+</launch>
