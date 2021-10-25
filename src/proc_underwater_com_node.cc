@@ -57,7 +57,7 @@ namespace proc_underwater_com
         {
             role_ = srv.response.role;
             ROS_INFO("Role is : %c", role_);
-            ROS_INFO("Channel is : %c", srv.response.channel);
+            ROS_INFO("Channel is : %d", srv.response.channel);
         }
         else
         {
