@@ -1,0 +1,8 @@
+
+#********** Driver Parameters ************
+
+/proc_underwater_com/connection/tty_port: "/dev/ttyUSB0"
+
+/proc_underwater_com/settings/role : "master"
+
+/proc_underwater_com/settings/channel : "4"
