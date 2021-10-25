@@ -44,17 +44,20 @@ namespace proc_underwater_com
         auvStateMissionPublisher_ = nh_->advertise<sonia_common::MissionSwitchMsg>("/proc_underwater_com/other_auv_state_mission", 100);
         auvDepthPublisher_ = nh_->advertise<std_msgs::Float32>("/proc_underwater_com/other_auv_depth", 100);
 
-        // Service
-        underwaterComClient_ = nh_->serviceClient<sonia_common::ModemPacket>("/provider_underwater_com/request");
-        underwaterComClient_.waitForExistence();
-        
+        // Service        
         sonia_common::ModemPacket srv;
         srv.request.cmd = CMD_SET_SETTINGS;
+        srv.request.role = (uint8_t) configuration_.getRole().at(0);
+        srv.request.channel = std::stoi(configuration_.getChannel());
+
+        underwaterComClient_ = nh_->serviceClient<sonia_common::ModemPacket>("/provider_underwater_com/request");
+        underwaterComClient_.waitForExistence();
 
         if(SensorState(srv))
         {
             role_ = srv.response.role;
-            ROS_INFO("Role is setup, %c", role_);
+            ROS_INFO("Role is : %c", role_);
+            ROS_INFO("Channel is : %c", srv.response.channel);
         }
         else
         {

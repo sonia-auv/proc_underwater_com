@@ -2,6 +2,6 @@
 
 /proc_underwater_com/connection/tty_port: "/dev/ttyUSB0"
 
-/proc_underwater_com/settings/role : "slave"
+/proc_underwater_com/settings/role : "b"
 
 /proc_underwater_com/settings/channel : "4"
