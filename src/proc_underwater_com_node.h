@@ -33,7 +33,7 @@
 #include <mutex>
 
 #include "Configuration.h"
-#include "sonia_common/ModemM64_definitions.h"
+#include "sonia_common/Modem_Definitions.h"
 #include "sonia_common/KillSwitchMsg.h"
 #include "sonia_common/MissionSwitchMsg.h"
 #include "sonia_common/ModemPacket.h"
