@@ -1,7 +1,4 @@
-
 #********** Driver Parameters ************
-
-/proc_underwater_com/connection/tty_port: "/dev/ttyUSB0"
 
 /proc_underwater_com/settings/role : "a"
 
