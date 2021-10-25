@@ -63,7 +63,7 @@ class ProcUnderwaterComNode
         void StateMissionCallback(const sonia_common::MissionSwitchMsg &msg);
         void DepthCallback(const std_msgs::Float32 &msg);
 
-        void Verify_Link();
+        void Process();
         
         ros::NodeHandlePtr nh_;
         Configuration configuration_;
@@ -80,8 +80,8 @@ class ProcUnderwaterComNode
 
         ros::ServiceClient underwaterComClient_;
 
-        std::thread diagnostic_thread;
-        std::mutex received_mutex;
+        std::thread process_thread;
+        std::mutex sensor_mutex;
 
         sonia_common::KillSwitchMsg stateKill_;
         sonia_common::MissionSwitchMsg stateMission_;

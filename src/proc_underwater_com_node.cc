@@ -64,7 +64,7 @@ namespace proc_underwater_com
             ros::shutdown();
         }
 
-        diagnostic_thread = std::thread(std::bind(&ProcUnderwaterComNode::Verify_Link, this));
+        process_thread = std::thread(std::bind(&ProcUnderwaterComNode::Process, this));
     }
 
     // Node Destructor
@@ -73,15 +73,10 @@ namespace proc_underwater_com
     // Spin
     void ProcUnderwaterComNode::Spin()
     {
-        ros::Rate r(0.2); // 0.2 Hz or 5 sec between each send
+        ros::Rate r(5); // 5 Hz
 
         while(ros::ok())
         {
-            if(role_ == ROLE_MASTER && link_ == LINK_UP)
-            {
-                ROS_INFO_STREAM("Sending a message to the salve");
-                SendMessage();
-            }
             ros::spinOnce();
             r.sleep();
         }
@@ -99,19 +94,25 @@ namespace proc_underwater_com
 
         if(role_ == ROLE_SLAVE)
         {
+            sensor_mutex.lock();
             ROS_INFO_STREAM("Sending a message to the master");
             SendMessage();
+            sensor_mutex.unlock();
         }
     }
     
     void ProcUnderwaterComNode::SendMessage()
     {
         std_msgs::String packet;
+        std::stringstream ss;
         uint16_t depth = (uint16_t)(lastDepth_ * 100.0);
+        char depth_buffer[3];
         uint8_t kill = (lastStateKill_) ? 1 : 0;
         uint8_t mission = (lastStateMission_) ? 1 : 0;
-        
-        packet.data = "D" + std::to_string(depth) + "K" + std::to_string(kill) + "M" + std::to_string(mission);
+
+        sprintf(depth_buffer, "%03u", depth);
+        ss << "D" << depth_buffer << "K" << std::to_string(kill) << "M" << std::to_string(mission);
+        packet.data = ss.str();
 
         underwaterComPublisher_.publish(packet);
     }
@@ -163,25 +164,30 @@ namespace proc_underwater_com
         lastDepth_ = msg.data;
     }
 
-    void ProcUnderwaterComNode::Verify_Link()
+    void ProcUnderwaterComNode::Process()
     {
-        ros::Rate r(0.1); // 0.1 Hz
+        ros::Rate r(0.2); // 0.2 Hz or 5 secondes entre envoi
         sonia_common::ModemPacket srv, flush_srv;
         flush_srv.request.cmd = CMD_FLUSH;
         srv.request.cmd = CMD_GET_DIAGNOSTIC;
 
         while(!ros::isShuttingDown())
         {
-            ROS_INFO_STREAM("Link is updated");
+            sensor_mutex.lock();
             if(SensorState(srv))
             {
                 link_ = (char) srv.response.link;
             }
-            if(link_ == LINK_DOWN)
+            if(link_ == LINK_UP && configuration_.getRole().at(0) == ROLE_MASTER)
+            {
+                SendMessage();
+            }
+            else if(link_ == LINK_DOWN)
             {
                 ROS_INFO_STREAM("Link is down. Flushing queue"); 
                 SensorState(flush_srv);
             }
+            sensor_mutex.unlock();
             r.sleep();
         }
     }
