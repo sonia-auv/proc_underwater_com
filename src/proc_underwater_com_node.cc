@@ -94,10 +94,8 @@ namespace proc_underwater_com
 
         if(role_ == ROLE_SLAVE)
         {
-            sensor_mutex.lock();
             ROS_INFO_STREAM("Sending a message to the master");
             SendMessage();
-            sensor_mutex.unlock();
         }
     }
     
@@ -173,7 +171,6 @@ namespace proc_underwater_com
 
         while(!ros::isShuttingDown())
         {
-            sensor_mutex.lock();
             if(SensorState(srv))
             {
                 link_ = (char) srv.response.link;
@@ -187,7 +184,6 @@ namespace proc_underwater_com
                 ROS_INFO_STREAM("Link is down. Flushing queue"); 
                 SensorState(flush_srv);
             }
-            sensor_mutex.unlock();
             r.sleep();
         }
     }
