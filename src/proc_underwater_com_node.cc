@@ -91,12 +91,6 @@ namespace proc_underwater_com
         AuvStateKillInterpreter(auvStateKill);
         AuvStateMissionInterpreter(auvStateMission);
         AuvDepthInterpreter(auvDepth);
-
-        if(role_ == ROLE_SLAVE)
-        {
-            ROS_INFO_STREAM("Sending a message to the master");
-            SendMessage();
-        }
     }
     
     void ProcUnderwaterComNode::SendMessage()
@@ -164,25 +158,21 @@ namespace proc_underwater_com
 
     void ProcUnderwaterComNode::Process()
     {
-        ros::Rate r(0.2); // 0.2 Hz or 5 secondes entre envoi
-        sonia_common::ModemPacket srv, flush_srv;
-        flush_srv.request.cmd = CMD_FLUSH;
+        ros::Rate r(0.2); // 0.2 Hz or 5 secondes entre chaque envoi
+        sonia_common::ModemPacket srv;
         srv.request.cmd = CMD_GET_DIAGNOSTIC;
 
         while(!ros::isShuttingDown())
         {
             if(SensorState(srv))
             {
+                ROS_INFO_STREAM("Verifying link status");
                 link_ = (char) srv.response.link;
             }
-            if(link_ == LINK_UP && configuration_.getRole().at(0) == ROLE_MASTER)
+            if(link_ == LINK_UP)
             {
+                ROS_INFO_STREAM("Sending message");
                 SendMessage();
-            }
-            else if(link_ == LINK_DOWN)
-            {
-                ROS_INFO_STREAM("Link is down. Flushing queue"); 
-                SensorState(flush_srv);
             }
             r.sleep();
         }
