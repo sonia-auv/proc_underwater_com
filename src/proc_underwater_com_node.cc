@@ -48,6 +48,10 @@ namespace proc_underwater_com
         underwaterComClient_ = nh_->serviceClient<sonia_common::ModemPacket>("/provider_underwater_com/request");
         underwaterComClient_.waitForExistence();
 
+        ros::Duration(10).sleep(); // Wait for default config to be done
+
+        ROS_INFO_STREAM("Settings up the role for the sensor");
+        
         sonia_common::ModemPacket srv;
         srv.request.cmd = CMD_SET_SETTINGS;
         srv.request.role = (uint8_t) configuration_.getRole().at(0);
