@@ -1,0 +1,5 @@
+#********** Driver Parameters ************
+
+/proc_underwater_com/settings/role : "b"
+
+/proc_underwater_com/settings/channel : "4"

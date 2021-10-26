@@ -32,7 +32,8 @@
 #include <thread>
 #include <mutex>
 
-#include "sonia_common/ModemM64_definitions.h"
+#include "Configuration.h"
+#include "sonia_common/Modem_Definitions.h"
 #include "sonia_common/KillSwitchMsg.h"
 #include "sonia_common/MissionSwitchMsg.h"
 #include "sonia_common/ModemPacket.h"
@@ -52,7 +53,7 @@ class ProcUnderwaterComNode
 
         void UnderwaterComInterpreterCallback(const std_msgs::String &msg);
         void SendMessage();
-        bool GetSensorState(sonia_common::ModemPacket &srv);
+        bool SensorState(sonia_common::ModemPacket &srv);
 
         void AuvStateKillInterpreter(const bool state);
         void AuvStateMissionInterpreter(const bool state);
@@ -62,9 +63,10 @@ class ProcUnderwaterComNode
         void StateMissionCallback(const sonia_common::MissionSwitchMsg &msg);
         void DepthCallback(const std_msgs::Float32 &msg);
 
-        void Verify_Link();
+        void Process();
         
         ros::NodeHandlePtr nh_;
+        Configuration configuration_;
 
         ros::Subscriber underwaterComSubscriber_;
         ros::Subscriber stateKillSubcrisber_;
@@ -78,19 +80,20 @@ class ProcUnderwaterComNode
 
         ros::ServiceClient underwaterComClient_;
 
-        std::thread diagnostic_thread;
+        std::thread process_thread;
+        std::mutex sensor_mutex;
 
         sonia_common::KillSwitchMsg stateKill_;
         sonia_common::MissionSwitchMsg stateMission_;
         std_msgs::Float32 depth_;
 
-        bool lastStateKill_ = true;
+        bool lastStateKill_ = false;
         bool lastStateMission_ = false;
-        float_t lastDepth_ = 4.95;
+        float_t lastDepth_ = 0.0;
 
         char role_ = ROLE_MASTER;
         char link_ = LINK_UP;
-
+        bool received_message_ = true;
 };
 }
 

@@ -29,36 +29,46 @@ namespace proc_underwater_com
 {
     // Node Constructor
     ProcUnderwaterComNode::ProcUnderwaterComNode(const ros::NodeHandlePtr &_nh)
-        : nh_(_nh)
+        : nh_(_nh), 
+          configuration_(_nh)
     {
+        // Subscribers
         underwaterComSubscriber_ = nh_->subscribe("/provider_underwater_com/receive_msgs", 100, &ProcUnderwaterComNode::UnderwaterComInterpreterCallback, this);
         stateKillSubcrisber_ = nh_->subscribe("/provider_kill_mission/kill_switch_msg", 100, &ProcUnderwaterComNode::StateKillCallback, this);
         stateMissionSubcrisber_ = nh_->subscribe("/provider_kill_mission/mission_switch_msg", 100, &ProcUnderwaterComNode::StateMissionCallback, this);
         depthSubcrisber_ = nh_->subscribe("/provider_depth/depth", 100, &ProcUnderwaterComNode::DepthCallback, this);
-
+        
+        // Advertisers
         underwaterComPublisher_ = nh_->advertise<std_msgs::String>("/proc_underwater_com/send_msgs", 100);
         auvStateKillPublisher_ = nh_->advertise<sonia_common::KillSwitchMsg>("/proc_underwater_com/other_auv_state_kill", 100);
         auvStateMissionPublisher_ = nh_->advertise<sonia_common::MissionSwitchMsg>("/proc_underwater_com/other_auv_state_mission", 100);
         auvDepthPublisher_ = nh_->advertise<std_msgs::Float32>("/proc_underwater_com/other_auv_depth", 100);
 
+        // Service  
         underwaterComClient_ = nh_->serviceClient<sonia_common::ModemPacket>("/provider_underwater_com/request");
-
         underwaterComClient_.waitForExistence();
+
+        ros::Duration(10).sleep(); // Wait for default config to be done
+
+        ROS_INFO_STREAM("Settings up the role for the sensor");
         
         sonia_common::ModemPacket srv;
-        srv.request.cmd = CMD_GET_SETTINGS;
+        srv.request.cmd = CMD_SET_SETTINGS;
+        srv.request.role = (uint8_t) configuration_.getRole().at(0);
+        srv.request.channel = std::stoi(configuration_.getChannel());
 
-        if(GetSensorState(srv))
+        if(SensorState(srv))
         {
             role_ = srv.response.role;
-            ROS_INFO_STREAM("Role is setup");
+            ROS_INFO("Role is : %c", role_);
+            ROS_INFO("Channel is : %d", srv.response.channel);
         }
         else
         {
             ros::shutdown();
         }
 
-        diagnostic_thread = std::thread(std::bind(&ProcUnderwaterComNode::Verify_Link, this));
+        process_thread = std::thread(std::bind(&ProcUnderwaterComNode::Process, this));
     }
 
     // Node Destructor
@@ -67,15 +77,10 @@ namespace proc_underwater_com
     // Spin
     void ProcUnderwaterComNode::Spin()
     {
-        ros::Rate r(0.2); // 0.2 Hz or 5 sec between each send
+        ros::Rate r(5); // 5 Hz
 
         while(ros::ok())
         {
-            if(role_ == ROLE_MASTER && link_ == LINK_UP)
-            {
-                ROS_INFO_STREAM("Sending a message to the salve");
-                SendMessage();
-            }
             ros::spinOnce();
             r.sleep();
         }
@@ -90,26 +95,25 @@ namespace proc_underwater_com
         AuvStateKillInterpreter(auvStateKill);
         AuvStateMissionInterpreter(auvStateMission);
         AuvDepthInterpreter(auvDepth);
-
-        if(role_ == ROLE_SLAVE)
-        {
-            SendMessage();
-        }
     }
     
     void ProcUnderwaterComNode::SendMessage()
     {
         std_msgs::String packet;
+        std::stringstream ss;
         uint16_t depth = (uint16_t)(lastDepth_ * 100.0);
+        char depth_buffer[3];
         uint8_t kill = (lastStateKill_) ? 1 : 0;
         uint8_t mission = (lastStateMission_) ? 1 : 0;
-        
-        packet.data = "D" + std::to_string(depth) + "K" + std::to_string(kill) + "M" + std::to_string(mission);
+
+        sprintf(depth_buffer, "%03u", depth);
+        ss << "D" << depth_buffer << "K" << std::to_string(kill) << "M" << std::to_string(mission);
+        packet.data = ss.str();
 
         underwaterComPublisher_.publish(packet);
     }
 
-    bool ProcUnderwaterComNode::GetSensorState(sonia_common::ModemPacket &srv)
+    bool ProcUnderwaterComNode::SensorState(sonia_common::ModemPacket &srv)
     {
         if(underwaterComClient_.call(srv))
         {
@@ -156,24 +160,23 @@ namespace proc_underwater_com
         lastDepth_ = msg.data;
     }
 
-    void ProcUnderwaterComNode::Verify_Link()
+    void ProcUnderwaterComNode::Process()
     {
-        ros::Rate r(0.1); // 0.1 Hz
-        sonia_common::ModemPacket srv, flush_srv;
-        flush_srv.request.cmd = CMD_FLUSH;
+        ros::Rate r(0.2); // 0.2 Hz or 5 secondes entre chaque envoi
+        sonia_common::ModemPacket srv;
         srv.request.cmd = CMD_GET_DIAGNOSTIC;
 
         while(!ros::isShuttingDown())
         {
-            ROS_INFO_STREAM("Link is updated");
-            if(GetSensorState(srv))
+            if(SensorState(srv))
             {
+                ROS_INFO_STREAM("Verifying link status");
                 link_ = (char) srv.response.link;
             }
-            if(link_ == LINK_DOWN)
+            if(link_ == LINK_UP)
             {
-                ROS_INFO_STREAM("Link is down. Flushing queue"); 
-                GetSensorState(flush_srv);
+                ROS_INFO_STREAM("Sending message");
+                SendMessage();
             }
             r.sleep();
         }
