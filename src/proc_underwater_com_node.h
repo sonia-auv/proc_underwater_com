@@ -31,12 +31,19 @@
 #include <std_msgs/Float32.h>
 #include <thread>
 #include <mutex>
+#include <algorithm>
+#include <iterator>
 
 #include "Configuration.h"
-#include "sonia_common/Modem_Definitions.h"
-#include "sonia_common/KillSwitchMsg.h"
-#include "sonia_common/MissionSwitchMsg.h"
-#include "sonia_common/ModemPacket.h"
+#include <sonia_common/KillSwitchMsg.h>
+#include <sonia_common/MissionSwitchMsg.h>
+#include <sonia_common/Modem_Definitions.h>
+#include <sonia_common/IntersubCom.h>
+#include <sonia_common/ModemSendCmd.h>
+#include <sonia_common/ModemGetMissionList.h>
+#include <sonia_common/ModemUpdateMissionList.h>
+
+#define SIZE_UINT8 256
 
 namespace proc_underwater_com {
 
@@ -53,7 +60,9 @@ class ProcUnderwaterComNode
 
         void UnderwaterComInterpreterCallback(const std_msgs::String &msg);
         void SendMessage();
-        bool SensorState(sonia_common::ModemPacket &srv);
+        bool SensorState(sonia_common::ModemSendCmd &srv);
+        bool GetMissionList(sonia_common::ModemGetMissionList::Request &req, sonia_common::ModemGetMissionList::Response &res);
+        bool UpdateMissionList(sonia_common::ModemUpdateMissionList::Request &req, sonia_common::ModemUpdateMissionList::Response &res);
 
         void AuvStateKillInterpreter(const bool state);
         void AuvStateMissionInterpreter(const bool state);
@@ -79,6 +88,8 @@ class ProcUnderwaterComNode
         ros::Publisher auvDepthPublisher_;
 
         ros::ServiceClient underwaterComClient_;
+        ros::ServiceServer underwaterComGetMissionList_;
+        ros::ServiceServer underwaterComUpdateMissionList_;
 
         std::thread process_thread;
         std::mutex sensor_mutex;
@@ -86,6 +97,8 @@ class ProcUnderwaterComNode
         sonia_common::KillSwitchMsg stateKill_;
         sonia_common::MissionSwitchMsg stateMission_;
         std_msgs::Float32 depth_;
+
+        std::vector<int8_t> mission_state;
 
         bool lastStateKill_ = false;
         bool lastStateMission_ = false;

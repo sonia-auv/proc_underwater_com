@@ -45,14 +45,16 @@ namespace proc_underwater_com
         auvDepthPublisher_ = nh_->advertise<std_msgs::Float32>("/proc_underwater_com/other_auv_depth", 100);
 
         // Service  
-        underwaterComClient_ = nh_->serviceClient<sonia_common::ModemPacket>("/provider_underwater_com/request");
+        underwaterComGetMissionList_ = nh_->advertiseService("/proc_underwater_com/get_mission_list", &ProcUnderwaterComNode::GetMissionList, this);
+        underwaterComUpdateMissionList_ = nh_->advertiseService("/proc_underwater_com/update_mission_list", &ProcUnderwaterComNode::UpdateMissionList, this);
+        underwaterComClient_ = nh_->serviceClient<sonia_common::ModemSendCmd>("/provider_underwater_com/request");
         underwaterComClient_.waitForExistence();
 
         ros::Duration(10).sleep(); // Wait for default config to be done
 
         ROS_INFO_STREAM("Settings up the role for the sensor");
         
-        sonia_common::ModemPacket srv;
+        sonia_common::ModemSendCmd srv;
         srv.request.cmd = CMD_SET_SETTINGS;
         srv.request.role = (uint8_t) configuration_.getRole().at(0);
         srv.request.channel = std::stoi(configuration_.getChannel());
@@ -113,7 +115,7 @@ namespace proc_underwater_com
         underwaterComPublisher_.publish(packet);
     }
 
-    bool ProcUnderwaterComNode::SensorState(sonia_common::ModemPacket &srv)
+    bool ProcUnderwaterComNode::SensorState(sonia_common::ModemSendCmd &srv)
     {
         if(underwaterComClient_.call(srv))
         {
@@ -125,6 +127,19 @@ namespace proc_underwater_com
             ROS_ERROR_STREAM("Service can't be called");
             return false;
         }
+    }
+
+    bool ProcUnderwaterComNode::GetMissionList(sonia_common::ModemGetMissionList::Request &req, sonia_common::ModemGetMissionList::Response &res)
+    {
+        copy(mission_state.begin(), mission_state.end(), back_inserter(res.state));
+        return true;
+    }
+
+    bool ProcUnderwaterComNode::UpdateMissionList(sonia_common::ModemUpdateMissionList::Request &req, sonia_common::ModemUpdateMissionList::Response &res)
+    {
+        mission_state.at(req.mission_id) = req.mission_state;
+        res.array_updated = true; // For future use
+        return true;
     }
 
     void ProcUnderwaterComNode::AuvStateKillInterpreter(const bool state)
@@ -163,7 +178,7 @@ namespace proc_underwater_com
     void ProcUnderwaterComNode::Process()
     {
         ros::Rate r(0.2); // 0.2 Hz or 5 secondes entre chaque envoi
-        sonia_common::ModemPacket srv;
+        sonia_common::ModemSendCmd srv;
         srv.request.cmd = CMD_GET_DIAGNOSTIC;
 
         while(!ros::isShuttingDown())
