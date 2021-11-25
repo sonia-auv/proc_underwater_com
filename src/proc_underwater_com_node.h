@@ -27,7 +27,7 @@
 #define PROC_UNDERWATER_COM_NODE
 
 #include <ros/ros.h>
-#include <std_msgs/String.h>
+#include <std_msgs/Bool.h>
 #include <std_msgs/Float32.h>
 #include <thread>
 #include <mutex>
@@ -35,8 +35,6 @@
 #include <iterator>
 
 #include "Configuration.h"
-#include <sonia_common/KillSwitchMsg.h>
-#include <sonia_common/MissionSwitchMsg.h>
 #include <sonia_common/Modem_Definitions.h>
 #include <sonia_common/IntersubCom.h>
 #include <sonia_common/ModemSendCmd.h>
@@ -58,7 +56,7 @@ class ProcUnderwaterComNode
 
     private:
 
-        void UnderwaterComInterpreterCallback(const std_msgs::String &msg);
+        void UnderwaterComInterpreterCallback(const sonia_common::IntersubCom &msgg);
         void SendMessage();
         bool SensorState(sonia_common::ModemSendCmd &srv);
         bool GetMissionList(sonia_common::ModemGetMissionList::Request &req, sonia_common::ModemGetMissionList::Response &res);
@@ -68,11 +66,15 @@ class ProcUnderwaterComNode
         void AuvStateMissionInterpreter(const bool state);
         void AuvDepthInterpreter(const float_t data);
 
-        void StateKillCallback(const sonia_common::KillSwitchMsg &msg);
-        void StateMissionCallback(const sonia_common::MissionSwitchMsg &msg);
+        void StateKillCallback(const std_msgs::Bool &msg);
+        void StateMissionCallback(const std_msgs::Bool &msg);
         void DepthCallback(const std_msgs::Float32 &msg);
 
         void Process();
+
+        void InitMissionState(uint8_t size);
+        uint8_t SendMissionState();
+        void UpdateMissionState(uint8_t index, int8_t state);
         
         ros::NodeHandlePtr nh_;
         Configuration configuration_;
@@ -94,19 +96,20 @@ class ProcUnderwaterComNode
         std::thread process_thread;
         std::mutex sensor_mutex;
 
-        sonia_common::KillSwitchMsg stateKill_;
-        sonia_common::MissionSwitchMsg stateMission_;
+        sonia_common::IntersubCom intercom_msg_;
+        std_msgs::Bool stateKill_;
+        std_msgs::Bool stateMission_;
         std_msgs::Float32 depth_;
 
+        // Refer to read me to understand the use for it
         std::vector<int8_t> mission_state;
+        uint8_t index_ = 0;
+        uint8_t size_mission_state;
 
+        // Data for the communication. Last value only
         bool lastStateKill_ = false;
         bool lastStateMission_ = false;
         float_t lastDepth_ = 0.0;
-
-        char role_ = ROLE_MASTER;
-        char link_ = LINK_UP;
-        bool received_message_ = true;
 };
 }
 

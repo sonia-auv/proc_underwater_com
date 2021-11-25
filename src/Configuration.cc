@@ -44,6 +44,7 @@ namespace proc_underwater_com
 
         FindParameter("/settings/role", role);
         FindParameter("/settings/channel", channel);
+        FindParameter("/settings/number_mission", nbmissions);
 
         ROS_INFO("End deserialize params");
     }
