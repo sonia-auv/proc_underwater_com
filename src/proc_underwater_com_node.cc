@@ -37,12 +37,14 @@ namespace proc_underwater_com
         stateKillSubcrisber_ = nh_->subscribe("/provider_kill_mission/kill_switch_msg", 100, &ProcUnderwaterComNode::StateKillCallback, this);
         stateMissionSubcrisber_ = nh_->subscribe("/provider_kill_mission/mission_switch_msg", 100, &ProcUnderwaterComNode::StateMissionCallback, this);
         depthSubcrisber_ = nh_->subscribe("/provider_depth/depth", 100, &ProcUnderwaterComNode::DepthCallback, this);
+        ioSubcrisber_ = nh_->subscribe("/provider_actuators/return_action", 100, &ProcUnderwaterComNode::IOCallback, this);
         
         // Advertisers
         underwaterComPublisher_ = nh_->advertise<sonia_common::IntersubCom>("/proc_underwater_com/send_msgs", 100);
         auvStateKillPublisher_ = nh_->advertise<std_msgs::Bool>("/proc_underwater_com/other_auv_state_kill", 100);
         auvStateMissionPublisher_ = nh_->advertise<std_msgs::Bool>("/proc_underwater_com/other_auv_state_mission", 100);
         auvDepthPublisher_ = nh_->advertise<std_msgs::Float32>("/proc_underwater_com/other_auv_depth", 100);
+        auvIOPublisher_ = nh_->advertise<std_msgs::UInt8MultiArray>("/proc_underwater_com/other_auv_io", 100);
 
         // Service  
         underwaterComGetMissionList_ = nh_->advertiseService("/proc_underwater_com/get_mission_list", &ProcUnderwaterComNode::GetMissionList, this);
@@ -107,6 +109,8 @@ namespace proc_underwater_com
         intercom_msg_.mission_switch_state = lastStateMission_;
         intercom_msg_.mission_id = SendMissionState();
         intercom_msg_.mission_state = mission_state.at(intercom_msg_.mission_id);
+        intercom_msg_.droppers_state = (lastIO_ & 0x0F);
+        intercom_msg_.torpedos_state = (lastIO_ & 0xF0);
 
         underwaterComPublisher_.publish(intercom_msg_);
     }
@@ -156,6 +160,21 @@ namespace proc_underwater_com
         auvDepthPublisher_.publish(depth_);
     }
 
+    void ProcUnderwaterComNode::AuvIOInterpreter(const uint8_t data)
+    {
+        std_msgs::UInt8MultiArray msg;
+
+        msg.data.clear();
+        msg.layout.dim[0].label = io_activation;
+
+        for(uint8_t i = 0; i < 4; ++i)
+        {
+            msg.data.push_back((data >> (i*2)) & 0x01);
+        }
+
+        auvIOPublisher_.publish(msg);
+    }
+
     void ProcUnderwaterComNode::StateKillCallback(const std_msgs::Bool &msg)
     {
         lastStateKill_ = msg.data;
@@ -169,6 +188,20 @@ namespace proc_underwater_com
     void ProcUnderwaterComNode::DepthCallback(const std_msgs::Float32 &msg)
     {
         lastDepth_ = msg.data;
+    }
+
+    void ProcUnderwaterComNode::IOCallback(const sonia_common::ActuatorDoAction & msg)
+    {
+        if(msg.element == sonia_common::ActuatorDoAction::ELEMENT_DROPPER)
+        {
+            if(msg.side == sonia_common::ActuatorDoAction::SIDE_STARBOARD) lastIO_ = lastIO_ | msg.action;
+            if(msg.side == sonia_common::ActuatorDoAction::SIDE_PORT) lastIO_ = lastIO_ | (msg.action << 2);
+        }
+        else if(msg.element == sonia_common::ActuatorDoAction::ELEMENT_TORPEDO)
+        {
+            if(msg.side == sonia_common::ActuatorDoAction::SIDE_STARBOARD) lastIO_ = lastIO_ | (msg.action << 4);
+            if(msg.side == sonia_common::ActuatorDoAction::SIDE_PORT) lastIO_ = lastIO_ | (msg.action << 6);
+        }
     }
 
     void ProcUnderwaterComNode::Process()

@@ -29,6 +29,8 @@
 #include <ros/ros.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float32.h>
+#include <std_msgs/UInt8MultiArray.h>
+#include <string>
 #include <thread>
 #include <mutex>
 #include <algorithm>
@@ -37,6 +39,7 @@
 #include "Configuration.h"
 #include <sonia_common/Modem_Definitions.h>
 #include <sonia_common/IntersubCom.h>
+#include <sonia_common/ActuatorDoAction.h>
 #include <sonia_common/ModemSendCmd.h>
 #include <sonia_common/ModemGetMissionList.h>
 #include <sonia_common/ModemUpdateMissionList.h>
@@ -65,10 +68,12 @@ class ProcUnderwaterComNode
         void AuvStateKillInterpreter(const bool state);
         void AuvStateMissionInterpreter(const bool state);
         void AuvDepthInterpreter(const float_t data);
+        void AuvIOInterpreter(const uint8_t data);
 
         void StateKillCallback(const std_msgs::Bool &msg);
         void StateMissionCallback(const std_msgs::Bool &msg);
         void DepthCallback(const std_msgs::Float32 &msg);
+        void IOCallback(const sonia_common::ActuatorDoAction &msg);
 
         void Process();
 
@@ -83,11 +88,13 @@ class ProcUnderwaterComNode
         ros::Subscriber stateKillSubcrisber_;
         ros::Subscriber stateMissionSubcrisber_;
         ros::Subscriber depthSubcrisber_;
+        ros::Subscriber ioSubcrisber_;
 
         ros::Publisher underwaterComPublisher_;
         ros::Publisher auvStateKillPublisher_;
         ros::Publisher auvStateMissionPublisher_;
         ros::Publisher auvDepthPublisher_;
+        ros::Publisher auvIOPublisher_;
 
         ros::ServiceClient underwaterComClient_;
         ros::ServiceServer underwaterComGetMissionList_;
@@ -101,6 +108,8 @@ class ProcUnderwaterComNode
         std_msgs::Bool stateMission_;
         std_msgs::Float32 depth_;
 
+        std::string io_activation = "Droppers : STARBOARD-PORT // Torpedos : STARBOARD-PORT";
+
         // Refer to read me to understand the use for it
         std::vector<int8_t> mission_state;
         uint8_t index_ = 0;
@@ -110,6 +119,7 @@ class ProcUnderwaterComNode
         bool lastStateKill_ = false;
         bool lastStateMission_ = false;
         float_t lastDepth_ = 0.0;
+        uint8_t lastIO_ = 0;
 };
 }
 
