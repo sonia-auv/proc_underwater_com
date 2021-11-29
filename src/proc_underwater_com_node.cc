@@ -190,7 +190,7 @@ namespace proc_underwater_com
         lastDepth_ = msg.data;
     }
 
-    void ProcUnderwaterComNode::IOCallback(const sonia_common::ActuatorDoAction & msg)
+    void ProcUnderwaterComNode::IOCallback(const sonia_common::ActuatorDoAction & msg) // Not tested as no implementation existed
     {
         if(msg.element == sonia_common::ActuatorDoAction::ELEMENT_DROPPER)
         {
