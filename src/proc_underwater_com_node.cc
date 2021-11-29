@@ -235,7 +235,7 @@ namespace proc_underwater_com
 
     uint8_t ProcUnderwaterComNode::SendMissionState()
     {
-        return (index_ + 1) % size_mission_state;
+        return (index_++) % size_mission_state;
     }
 
     void ProcUnderwaterComNode::UpdateMissionState(uint8_t index, int8_t state)
