@@ -44,7 +44,7 @@ It means you have it installed. If not follow instructions on how to install it 
 
 To use the mission array to control both submarine with the same state machine, you can send the right state value with the appropriate mission ID. Here is a link to the documentation to explain the functionnality :
 
-*[Underwater COM documentation](https://wiki.sonia.etsmtl.ca/en/software/projects/underwater-com) - Special project documentation with mission array explained
+* [Underwater COM documentation](https://wiki.sonia.etsmtl.ca/en/software/projects/underwater-com) - Special project documentation with mission array explained
 
 ## Built With
 
