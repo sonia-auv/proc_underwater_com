@@ -41,6 +41,7 @@ namespace proc_underwater_com
 
         std::string getRole() const {return role;}
         std::string getChannel() const {return channel;}
+        int getNumberMission() const {return nbmissions;}
 
     private:
 
@@ -48,6 +49,7 @@ namespace proc_underwater_com
 
         std::string role;
         std::string channel;
+        int nbmissions;
 
         void Deserialize();
         void SetParameter();
