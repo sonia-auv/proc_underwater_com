@@ -90,12 +90,13 @@ namespace proc_underwater_com
         }
     }
 
-    void ProcUnderwaterComNode::UnderwaterComInterpreterCallback(const sonia_common::IntersubCom &msg)
+    void ProcUnderwaterComNode::UnderwaterComInterpreterCallback(const std_msgs::UInt64 &msg)
     {
-        bool auvStateKill = msg.kill_switch_state;
-        bool auvStateMission = msg.mission_switch_state;
-        float_t auvDepth = msg.depth * 100.0;
-        UpdateMissionState(msg.mission_id, msg.mission_state);
+        Modem_M64_t packet = ConstructPacket(msg.data);
+        bool auvStateKill = packet.killSwitchState;
+        bool auvStateMission = packet.missionSwitchState;
+        float_t auvDepth = (float_t)packet.depth / 100.0;
+        UpdateMissionState(packet.missionId, packet.missionState);
 
         AuvStateKillInterpreter(auvStateKill);
         AuvStateMissionInterpreter(auvStateMission);
@@ -104,15 +105,20 @@ namespace proc_underwater_com
     
     void ProcUnderwaterComNode::SendMessage()
     {
-        intercom_msg_.depth = (uint16_t)(lastDepth_ * 100.0);
-        intercom_msg_.kill_switch_state = lastStateKill_;
-        intercom_msg_.mission_switch_state = lastStateMission_;
-        intercom_msg_.mission_id = SendMissionState();
-        intercom_msg_.mission_state = mission_state.at(intercom_msg_.mission_id);
-        intercom_msg_.droppers_state = (lastIO_ & 0x0F);
-        intercom_msg_.torpedos_state = (lastIO_ & 0xF0);
+        Modem_M64_t send_packet;
 
-        underwaterComPublisher_.publish(intercom_msg_);
+        send_packet.header.packetNumber = 0b1;
+        send_packet.header.packetId = 0b1;
+        send_packet.header.endOfPacket = 0b1;
+        send_packet.depth = (uint16_t)(lastDepth_ * 100.0);
+        send_packet.kill_switch_state = lastStateKill_;
+        send_packet.mission_switch_state = lastStateMission_;
+        send_packet.mission_id = SendMissionState();
+        send_packet.mission_state = mission_state.at(send_packet.mission_id);
+        send_packet.droppers_state = (lastIO_ & 0x0F);
+        send_packet.torpedos_state = (lastIO_ & 0xF0);
+
+        underwaterComPublisher_.publish(DeconstructPacket(send_packet));
     }
 
     bool ProcUnderwaterComNode::SensorState(sonia_common::ModemSendCmd &srv)
@@ -225,6 +231,16 @@ namespace proc_underwater_com
             }
             r.sleep();
         }
+    }
+    
+    Modem_M64_t ConstructPacket(const uint64_t data)
+    {
+        return *((Modem_M64_t *)&data);
+    }
+    
+    uint64_t DeconstructPacket(const Modem_M64_t packet)
+    {
+        return *((uint64_t *)&packet);
     }
 
     void ProcUnderwaterComNode::InitMissionState(uint8_t size)

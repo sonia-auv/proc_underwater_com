@@ -29,6 +29,7 @@
 #include <ros/ros.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float32.h>
+#include <std_msgs/UInt64.h>
 #include <std_msgs/UInt8MultiArray.h>
 #include <string>
 #include <thread>
@@ -37,8 +38,9 @@
 #include <iterator>
 
 #include "Configuration.h"
+#include "modem_data.h"
 #include <sonia_common/Modem_Definitions.h>
-#include <sonia_common/IntersubCom.h>
+// #include <sonia_common/IntersubCom.h>
 #include <sonia_common/ActuatorDoAction.h>
 #include <sonia_common/ModemSendCmd.h>
 #include <sonia_common/ModemGetMissionList.h>
@@ -59,7 +61,7 @@ class ProcUnderwaterComNode
 
     private:
 
-        void UnderwaterComInterpreterCallback(const sonia_common::IntersubCom &msgg);
+        void UnderwaterComInterpreterCallback(const std_msgs::UInt64 &msgg);
         void SendMessage();
         bool SensorState(sonia_common::ModemSendCmd &srv);
         bool GetMissionList(sonia_common::ModemGetMissionList::Request &req, sonia_common::ModemGetMissionList::Response &res);
@@ -76,6 +78,8 @@ class ProcUnderwaterComNode
         void IOCallback(const sonia_common::ActuatorDoAction &msg);
 
         void Process();
+        Modem_M64_t ConstructPacket(const uint64_t data);
+        uint64_t DeconstructPacket(const Modem_M64_t packet);
 
         void InitMissionState(uint8_t size);
         uint8_t SendMissionState();
@@ -103,7 +107,7 @@ class ProcUnderwaterComNode
         std::thread process_thread;
         std::mutex sensor_mutex;
 
-        sonia_common::IntersubCom intercom_msg_;
+        // sonia_common::IntersubCom intercom_msg_;
         std_msgs::Bool stateKill_;
         std_msgs::Bool stateMission_;
         std_msgs::Float32 depth_;
