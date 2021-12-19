@@ -40,7 +40,7 @@ namespace proc_underwater_com
         ioSubcrisber_ = nh_->subscribe("/provider_actuators/return_action", 100, &ProcUnderwaterComNode::IOCallback, this);
         
         // Advertisers
-        underwaterComPublisher_ = nh_->advertise<sonia_common::IntersubCom>("/proc_underwater_com/send_msgs", 100);
+        underwaterComPublisher_ = nh_->advertise<std_msgs::UInt64>("/proc_underwater_com/send_msgs", 100);
         auvStateKillPublisher_ = nh_->advertise<std_msgs::Bool>("/proc_underwater_com/other_auv_state_kill", 100);
         auvStateMissionPublisher_ = nh_->advertise<std_msgs::Bool>("/proc_underwater_com/other_auv_state_mission", 100);
         auvDepthPublisher_ = nh_->advertise<std_msgs::Float32>("/proc_underwater_com/other_auv_depth", 100);
@@ -50,9 +50,9 @@ namespace proc_underwater_com
         underwaterComGetMissionList_ = nh_->advertiseService("/proc_underwater_com/get_mission_list", &ProcUnderwaterComNode::GetMissionList, this);
         underwaterComUpdateMissionList_ = nh_->advertiseService("/proc_underwater_com/update_mission_list", &ProcUnderwaterComNode::UpdateMissionList, this);
         underwaterComClient_ = nh_->serviceClient<sonia_common::ModemSendCmd>("/provider_underwater_com/request");
-        underwaterComClient_.waitForExistence();
+        underwaterComClient_.waitForExistence(ros::Duration(20)); // Timeout 20 seconds
 
-        ros::Duration(10).sleep(); // Wait for default config to be done
+        // ros::Duration(10).sleep(); // Wait for default config to be done
 
         ROS_INFO_STREAM("Settings up the role for the sensor");
         
@@ -90,12 +90,13 @@ namespace proc_underwater_com
         }
     }
 
-    void ProcUnderwaterComNode::UnderwaterComInterpreterCallback(const sonia_common::IntersubCom &msg)
+    void ProcUnderwaterComNode::UnderwaterComInterpreterCallback(const std_msgs::UInt64 &msg)
     {
-        bool auvStateKill = msg.kill_switch_state;
-        bool auvStateMission = msg.mission_switch_state;
-        float_t auvDepth = msg.depth * 100.0;
-        UpdateMissionState(msg.mission_id, msg.mission_state);
+        Modem_M64_t packet = ConstructPacket(msg.data);
+        bool auvStateKill = packet.killSwitchState;
+        bool auvStateMission = packet.missionSwitchState;
+        float_t auvDepth = (float_t)packet.depth / 100.0;
+        UpdateMissionState(packet.missionId, packet.missionState);
 
         AuvStateKillInterpreter(auvStateKill);
         AuvStateMissionInterpreter(auvStateMission);
@@ -104,15 +105,22 @@ namespace proc_underwater_com
     
     void ProcUnderwaterComNode::SendMessage()
     {
-        intercom_msg_.depth = (uint16_t)(lastDepth_ * 100.0);
-        intercom_msg_.kill_switch_state = lastStateKill_;
-        intercom_msg_.mission_switch_state = lastStateMission_;
-        intercom_msg_.mission_id = SendMissionState();
-        intercom_msg_.mission_state = mission_state.at(intercom_msg_.mission_id);
-        intercom_msg_.droppers_state = (lastIO_ & 0x0F);
-        intercom_msg_.torpedos_state = (lastIO_ & 0xF0);
+        Modem_M64_t send_packet;
+        std_msgs::UInt64 msg;
 
-        underwaterComPublisher_.publish(intercom_msg_);
+        send_packet.header.packetNumber = 0b1;
+        send_packet.header.packetId = 0b1;
+        send_packet.header.endOfPacket = 0b1;
+        send_packet.depth = (uint16_t)(lastDepth_ * 100.0);
+        send_packet.killSwitchState = lastStateKill_;
+        send_packet.missionSwitchState = lastStateMission_;
+        send_packet.missionId = SendMissionState();
+        send_packet.missionState = mission_state.at(send_packet.missionId);
+        send_packet.droppersState = (lastIO_ & 0x0F);
+        send_packet.torpedosState = (lastIO_ & 0xF0);
+
+        msg.data = DeconstructPacket(send_packet);
+        underwaterComPublisher_.publish(msg);
     }
 
     bool ProcUnderwaterComNode::SensorState(sonia_common::ModemSendCmd &srv)
@@ -225,6 +233,16 @@ namespace proc_underwater_com
             }
             r.sleep();
         }
+    }
+    
+    Modem_M64_t ProcUnderwaterComNode::ConstructPacket(const uint64_t data)
+    {
+        return *((Modem_M64_t *)&data);
+    }
+    
+    uint64_t ProcUnderwaterComNode::DeconstructPacket(const Modem_M64_t packet)
+    {
+        return *((uint64_t *)&packet);
     }
 
     void ProcUnderwaterComNode::InitMissionState(uint8_t size)
