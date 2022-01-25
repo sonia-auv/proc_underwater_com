@@ -93,14 +93,18 @@ namespace proc_underwater_com
     void ProcUnderwaterComNode::UnderwaterComInterpreterCallback(const std_msgs::UInt64 &msg)
     {
         Modem_M64_t packet = ConstructPacket(msg.data);
-        bool auvStateKill = packet.killSwitchState;
-        bool auvStateMission = packet.missionSwitchState;
-        float_t auvDepth = (float_t)packet.depth / 100.0;
-        UpdateMissionState(packet.missionId, packet.missionState);
 
-        AuvStateKillInterpreter(auvStateKill);
-        AuvStateMissionInterpreter(auvStateMission);
-        AuvDepthInterpreter(auvDepth);
+        if(VerifyPacket(packet) >= 0)
+        {
+            bool auvStateKill = packet.killSwitchState;
+            bool auvStateMission = packet.missionSwitchState;
+            float_t auvDepth = (float_t)packet.depth / 100.0;
+            UpdateMissionState(packet.missionId, packet.missionState);
+
+            AuvStateKillInterpreter(auvStateKill);
+            AuvStateMissionInterpreter(auvStateMission);
+            AuvDepthInterpreter(auvDepth);
+        }
     }
     
     void ProcUnderwaterComNode::SendMessage()
@@ -214,7 +218,7 @@ namespace proc_underwater_com
 
     void ProcUnderwaterComNode::Process()
     {
-        ros::Rate r(0.2); // 0.2 Hz or 5 secondes entre chaque envoi
+        ros::Rate r(0.2); // 0.2 Hz or 5 sec between each send
         char link;
         sonia_common::ModemSendCmd srv;
         srv.request.cmd = CMD_GET_DIAGNOSTIC;
@@ -243,6 +247,20 @@ namespace proc_underwater_com
     uint64_t ProcUnderwaterComNode::DeconstructPacket(const Modem_M64_t packet)
     {
         return *((uint64_t *)&packet);
+    }
+
+    int8_t ProcUnderwaterComNode::VerifyPacket(const Modem_M64_t packet)
+    {
+        uint8_t nbPacket = packet.header.packetNumber;
+        uint8_t packetId = packet.header.packetId;
+
+        // Verification of the packet is conform to the protocol
+        if(nbPacket < 1 || packetId < 1)
+        {
+            ROS_WARN_STREAM("Problem with the packet received. Dropping packet");
+            return -EINVAL;
+        }
+        return packetId;
     }
 
     void ProcUnderwaterComNode::InitMissionState(uint8_t size)

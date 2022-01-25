@@ -36,11 +36,11 @@
 #include <mutex>
 #include <algorithm>
 #include <iterator>
+#include <errno.h>
 
 #include "Configuration.h"
 #include "modem_data.h"
 #include <sonia_common/Modem_Definitions.h>
-// #include <sonia_common/IntersubCom.h>
 #include <sonia_common/ActuatorDoAction.h>
 #include <sonia_common/ModemSendCmd.h>
 #include <sonia_common/ModemGetMissionList.h>
@@ -80,6 +80,7 @@ class ProcUnderwaterComNode
         void Process();
         Modem_M64_t ConstructPacket(const uint64_t data);
         uint64_t DeconstructPacket(const Modem_M64_t packet);
+        int8_t VerifyPacket(const Modem_M64_t packet);
 
         void InitMissionState(uint8_t size);
         uint8_t SendMissionState();
