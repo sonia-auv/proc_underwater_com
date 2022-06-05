@@ -50,6 +50,8 @@
 
 namespace proc_underwater_com {
 
+enum command {mission,depth};
+
 class ProcUnderwaterComNode
 {
     public:
@@ -85,6 +87,7 @@ class ProcUnderwaterComNode
         void InitMissionState(uint8_t size);
         uint8_t SendMissionState();
         void UpdateMissionState(uint8_t index, int8_t state);
+        void UpdateMissionState_othersub(uint8_t index, int8_t state);
         
         ros::NodeHandlePtr nh_;
         Configuration configuration_;
@@ -109,14 +112,16 @@ class ProcUnderwaterComNode
         std::mutex sensor_mutex;
 
         // sonia_common::IntersubCom intercom_msg_;
-        std_msgs::Bool stateKill_;
-        std_msgs::Bool stateMission_;
+        // std_msgs::Bool stateKill_;
+        std_msgs::Bool stateMission_; 
         std_msgs::Float32 depth_;
+        std_msgs::Float32 other_sub_depth_;
 
-        std::string io_activation = "Droppers : STARBOARD-PORT // Torpedos : STARBOARD-PORT";
+        // std::string io_activation = "Droppers : STARBOARD-PORT // Torpedos : STARBOARD-PORT";
 
         // Refer to read me to understand the use for it
         std::vector<int8_t> mission_state;
+        std::vector<int8_t> other_sub_mission_state;
         uint8_t index_ = 0;
         uint8_t size_mission_state;
 

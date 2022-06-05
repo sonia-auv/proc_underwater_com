@@ -34,16 +34,16 @@ namespace proc_underwater_com
     {
         // Subscribers
         underwaterComSubscriber_ = nh_->subscribe("/provider_underwater_com/receive_msgs", 100, &ProcUnderwaterComNode::UnderwaterComInterpreterCallback, this);
-        stateKillSubcrisber_ = nh_->subscribe("/provider_kill_mission/kill_switch_msg", 100, &ProcUnderwaterComNode::StateKillCallback, this);
+        // stateKillSubcrisber_ = nh_->subscribe("/provider_kill_mission/kill_switch_msg", 100, &ProcUnderwaterComNode::StateKillCallback, this);
         stateMissionSubcrisber_ = nh_->subscribe("/provider_kill_mission/mission_switch_msg", 100, &ProcUnderwaterComNode::StateMissionCallback, this);
         depthSubcrisber_ = nh_->subscribe("/provider_depth/depth", 100, &ProcUnderwaterComNode::DepthCallback, this);
-        ioSubcrisber_ = nh_->subscribe("/provider_actuators/return_action", 100, &ProcUnderwaterComNode::IOCallback, this);
+        // ioSubcrisber_ = nh_->subscribe("/provider_actuators/return_action", 100, &ProcUnderwaterComNode::IOCallback, this);
         
         // Advertisers
         underwaterComPublisher_ = nh_->advertise<std_msgs::UInt64>("/proc_underwater_com/send_msgs", 100);
-        auvStateKillPublisher_ = nh_->advertise<std_msgs::Bool>("/proc_underwater_com/other_auv_state_kill", 100);
-        auvStateMissionPublisher_ = nh_->advertise<std_msgs::Bool>("/proc_underwater_com/other_auv_state_mission", 100);
-        auvDepthPublisher_ = nh_->advertise<std_msgs::Float32>("/proc_underwater_com/other_auv_depth", 100);
+        // auvStateKillPublisher_ = nh_->advertise<std_msgs::Bool>("/proc_underwater_com/other_auv_state_kill", 100);
+        // auvStateMissionPublisher_ = nh_->advertise<std_msgs::Bool>("/proc_underwater_com/other_auv_state_mission", 100);
+        auvDepthPublisher_ = nh_->advertise<std_msgs::Float32>("/proc_underwater_com/other_auv_depth", 100,true); //msg latched
         auvIOPublisher_ = nh_->advertise<std_msgs::UInt8MultiArray>("/proc_underwater_com/other_auv_io", 100);
 
         // Service  
@@ -96,14 +96,18 @@ namespace proc_underwater_com
 
         if(VerifyPacket(packet) >= 0)
         {
-            bool auvStateKill = packet.killSwitchState;
-            bool auvStateMission = packet.missionSwitchState;
-            float_t auvDepth = (float_t)packet.depth / 100.0;
-            UpdateMissionState(packet.missionId, packet.missionState);
+            switch (packet.cmd)
 
-            AuvStateKillInterpreter(auvStateKill);
-            AuvStateMissionInterpreter(auvStateMission);
+        case depth: 
+            float_t auvDepth = (float_t)packet.depth / 100.0;
             AuvDepthInterpreter(auvDepth);
+        break;
+
+        case mission: 
+            UpdateMissionState(packet.data[0], packet.data[1]);
+            AuvStateMissionInterpreter(packet.data[1]);
+        break;    
+            
         }
     }
     
@@ -115,13 +119,19 @@ namespace proc_underwater_com
         send_packet.header.packetNumber = 0b1;
         send_packet.header.packetId = 0b1;
         send_packet.header.endOfPacket = 0b1;
-        send_packet.depth = (uint16_t)(lastDepth_ * 100.0);
-        send_packet.killSwitchState = lastStateKill_;
-        send_packet.missionSwitchState = lastStateMission_;
-        send_packet.missionId = SendMissionState();
-        send_packet.missionState = mission_state.at(send_packet.missionId);
-        send_packet.droppersState = (lastIO_ & 0x0F);
-        send_packet.torpedosState = (lastIO_ & 0xF0);
+        send_packet.AUV_ID = 8; //ou est il défini?
+        
+
+        switch (command) //D'ou provient la commande?
+
+        case depth: 
+            send_packet.data = (uint16_t)(lastDepth_ * 100.0); // à voir pour le typecast et type voulu
+        break;
+
+        case mission: 
+            send_packet.data[0] = SendMissionState(); // Modifier mission state
+            send_packet.data[1] = mission_state.at(send_packet.data[0]);
+        break;
 
         msg.data = DeconstructPacket(send_packet);
         underwaterComPublisher_.publish(msg);
@@ -168,7 +178,7 @@ namespace proc_underwater_com
 
     void ProcUnderwaterComNode::AuvDepthInterpreter(const float_t data)
     {
-        depth_.data = data;
+        other_sub_depth_.data = data;
         auvDepthPublisher_.publish(depth_);
     }
 
@@ -277,5 +287,10 @@ namespace proc_underwater_com
     void ProcUnderwaterComNode::UpdateMissionState(uint8_t index, int8_t state)
     {
         mission_state.at(index) = state;
+    }
+
+    void ProcUnderwaterComNode::UpdateMissionState_othersub(uint8_t index, int8_t state)
+    {
+        other_sub_mission_state.at(index) = state;
     }
 }

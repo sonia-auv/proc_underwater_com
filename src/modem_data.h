@@ -13,11 +13,9 @@ typedef struct
 typedef struct
 {
     Header_t header;
-    uint8_t killSwitchState : 4, missionSwitchState : 4;
-    uint16_t depth;
-    uint8_t missionId;
-    uint8_t missionState;
-    uint8_t torpedosState : 4, droppersState : 4;
+    uint8_t AUV_ID;
+    uint8_t cmd;
+    uint8_t data[6];
 } Modem_M64_t;
 
 #pragma pack(pop)
