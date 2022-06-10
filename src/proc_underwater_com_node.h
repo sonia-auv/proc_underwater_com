@@ -116,8 +116,8 @@ class ProcUnderwaterComNode
         std_msgs::Bool stateMission_; 
         std_msgs::Float32 depth_;
         std_msgs::Float32 other_sub_depth_;
-
-        // std::string io_activation = "Droppers : STARBOARD-PORT // Torpedos : STARBOARD-PORT";
+        
+         std::string io_activation = "Droppers : STARBOARD-PORT // Torpedos : STARBOARD-PORT";
 
         // Refer to read me to understand the use for it
         std::vector<int8_t> mission_state;

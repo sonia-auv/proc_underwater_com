@@ -96,17 +96,20 @@ namespace proc_underwater_com
 
         if(VerifyPacket(packet) >= 0)
         {
-            switch (packet.cmd)
+            switch (packet.cmd){
 
-        case depth: 
-            float_t auvDepth = (float_t)packet.depth / 100.0;
-            AuvDepthInterpreter(auvDepth);
-        break;
+                case mission: 
+                    UpdateMissionState(packet.data[0], packet.data[1]);
+                    AuvStateMissionInterpreter(packet.data[1]);
+                break; 
 
-        case mission: 
-            UpdateMissionState(packet.data[0], packet.data[1]);
-            AuvStateMissionInterpreter(packet.data[1]);
-        break;    
+                case depth: 
+                    float_t auvDepth = (float_t)packet.data[0] / 100.0;  //à voir
+                    AuvDepthInterpreter(auvDepth);
+                break;
+
+                 
+        }  
             
         }
     }
@@ -120,18 +123,24 @@ namespace proc_underwater_com
         send_packet.header.packetId = 0b1;
         send_packet.header.endOfPacket = 0b1;
         send_packet.AUV_ID = 8; //ou est il défini?
+        uint8_t cmd = 0;
         
 
-        switch (command) //D'ou provient la commande?
+        switch (cmd){ //D'ou provient la commande?
 
-        case depth: 
-            send_packet.data = (uint16_t)(lastDepth_ * 100.0); // à voir pour le typecast et type voulu
-        break;
+            case mission: 
+                send_packet.cmd = mission;
+                send_packet.data[0] = SendMissionState(); // Modifier mission state
+                send_packet.data[1] = mission_state.at(send_packet.data[0]);
+            break;
+            
+            case depth: 
+                send_packet.cmd = depth;
+                send_packet.data[0] = (uint8_t)(lastDepth_ * 100.0); // à voir pour le typecast et type voulu
+            break;
 
-        case mission: 
-            send_packet.data[0] = SendMissionState(); // Modifier mission state
-            send_packet.data[1] = mission_state.at(send_packet.data[0]);
-        break;
+            
+        }
 
         msg.data = DeconstructPacket(send_packet);
         underwaterComPublisher_.publish(msg);
@@ -164,11 +173,11 @@ namespace proc_underwater_com
         return true;
     }
 
-    void ProcUnderwaterComNode::AuvStateKillInterpreter(const bool state)
+    /*void ProcUnderwaterComNode::AuvStateKillInterpreter(const bool state)
     {
         stateKill_.data = state;
         auvStateKillPublisher_.publish(stateKill_);
-    }
+    }*/
 
     void ProcUnderwaterComNode::AuvStateMissionInterpreter(const bool state)
     {
@@ -179,7 +188,7 @@ namespace proc_underwater_com
     void ProcUnderwaterComNode::AuvDepthInterpreter(const float_t data)
     {
         other_sub_depth_.data = data;
-        auvDepthPublisher_.publish(depth_);
+        auvDepthPublisher_.publish(other_sub_depth_);
     }
 
     void ProcUnderwaterComNode::AuvIOInterpreter(const uint8_t data)
@@ -197,10 +206,10 @@ namespace proc_underwater_com
         auvIOPublisher_.publish(msg);
     }
 
-    void ProcUnderwaterComNode::StateKillCallback(const std_msgs::Bool &msg)
+    /*void ProcUnderwaterComNode::StateKillCallback(const std_msgs::Bool &msg)
     {
         lastStateKill_ = msg.data;
-    }
+    }*/
 
     void ProcUnderwaterComNode::StateMissionCallback(const std_msgs::Bool &msg)
     {
