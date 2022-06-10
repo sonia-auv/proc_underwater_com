@@ -5,3 +5,5 @@
 /proc_underwater_com/settings/channel : "4"
 
 /proc_underwater_com/settings/number_mission : 16
+
+/proc_underwater_com/settings/id : 7

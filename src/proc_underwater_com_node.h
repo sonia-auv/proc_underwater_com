@@ -50,7 +50,7 @@
 
 namespace proc_underwater_com {
 
-enum command {mission,depth};
+enum command {mission,depth, sync};
 
 class ProcUnderwaterComNode
 {
@@ -69,15 +69,14 @@ class ProcUnderwaterComNode
         bool GetMissionList(sonia_common::ModemGetMissionList::Request &req, sonia_common::ModemGetMissionList::Response &res);
         bool UpdateMissionList(sonia_common::ModemUpdateMissionList::Request &req, sonia_common::ModemUpdateMissionList::Response &res);
 
-        void AuvStateKillInterpreter(const bool state);
         void AuvStateMissionInterpreter(const bool state);
         void AuvDepthInterpreter(const float_t data);
-        void AuvIOInterpreter(const uint8_t data);
+        void AuvSyncInterpreter(const bool state);
 
-        void StateKillCallback(const std_msgs::Bool &msg);
+        void MissionStateCallback(const sonia_common::ModemUpdateMissionList::Request &msg);
+        void SyncCallback(const std_msgs::Bool &msg);
         void StateMissionCallback(const std_msgs::Bool &msg);
         void DepthCallback(const std_msgs::Float32 &msg);
-        void IOCallback(const sonia_common::ActuatorDoAction &msg);
 
         void Process();
         Modem_M64_t ConstructPacket(const uint64_t data);
@@ -93,43 +92,32 @@ class ProcUnderwaterComNode
         Configuration configuration_;
 
         ros::Subscriber underwaterComSubscriber_;
-        ros::Subscriber stateKillSubcrisber_;
-        ros::Subscriber stateMissionSubcrisber_;
+        ros::Subscriber updateMissionSubcrisber_;
         ros::Subscriber depthSubcrisber_;
-        ros::Subscriber ioSubcrisber_;
+        ros::Subscriber syncSubscriber_;
 
         ros::Publisher underwaterComPublisher_;
-        ros::Publisher auvStateKillPublisher_;
-        ros::Publisher auvStateMissionPublisher_;
-        ros::Publisher auvDepthPublisher_;
-        ros::Publisher auvIOPublisher_;
+        ros::Publisher auvMissionPublisher_;
+        ros::Publisher otherauvMissionPublisher_;
+        ros::Publisher syncPublisher_;
 
         ros::ServiceClient underwaterComClient_;
-        ros::ServiceServer underwaterComGetMissionList_;
-        ros::ServiceServer underwaterComUpdateMissionList_;
 
         std::thread process_thread;
         std::mutex sensor_mutex;
 
-        // sonia_common::IntersubCom intercom_msg_;
-        // std_msgs::Bool stateKill_;
         std_msgs::Bool stateMission_; 
         std_msgs::Float32 depth_;
         std_msgs::Float32 other_sub_depth_;
-        
-         std::string io_activation = "Droppers : STARBOARD-PORT // Torpedos : STARBOARD-PORT";
+
 
         // Refer to read me to understand the use for it
-        std::vector<int8_t> mission_state;
-        std::vector<int8_t> other_sub_mission_state;
+        std_msgs::UInt8MultiArray mission_state;
+        std_msgs::UInt8MultiArray other_sub_mission_state;
         uint8_t index_ = 0;
         uint8_t size_mission_state;
-
-        // Data for the communication. Last value only
-        bool lastStateKill_ = false;
-        bool lastStateMission_ = false;
-        float_t lastDepth_ = 0.0;
-        uint8_t lastIO_ = 0;
+        uint8_t AUVID = 0;
+        float lastDepth_;
 };
 }
 

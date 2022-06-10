@@ -31,7 +31,8 @@ namespace proc_underwater_com
     Configuration::Configuration(const ros::NodeHandlePtr &nh)
         : nh(nh),
           role("master"),
-          channel("4")
+          channel("4"),
+          id(8)
     {
         Deserialize();
     }
@@ -45,6 +46,7 @@ namespace proc_underwater_com
         FindParameter("/settings/role", role);
         FindParameter("/settings/channel", channel);
         FindParameter("/settings/number_mission", nbmissions);
+        FindParameter("/settings/id", id);
 
         ROS_INFO("End deserialize params");
     }

@@ -5,15 +5,8 @@
 
 typedef struct
 {
-    uint8_t packetNumber;
-    uint8_t packetId : 7;
-    uint8_t endOfPacket : 1;
-} Header_t;
-
-typedef struct
-{
-    Header_t header;
-    uint8_t AUV_ID;
+    uint8_t AUV_ID :7;
+    uint8_t write_read : 1;
     uint8_t cmd;
     uint8_t data[6];
 } Modem_M64_t;

@@ -34,25 +34,21 @@ namespace proc_underwater_com
     {
         // Subscribers
         underwaterComSubscriber_ = nh_->subscribe("/provider_underwater_com/receive_msgs", 100, &ProcUnderwaterComNode::UnderwaterComInterpreterCallback, this);
-        // stateKillSubcrisber_ = nh_->subscribe("/provider_kill_mission/kill_switch_msg", 100, &ProcUnderwaterComNode::StateKillCallback, this);
-        stateMissionSubcrisber_ = nh_->subscribe("/provider_kill_mission/mission_switch_msg", 100, &ProcUnderwaterComNode::StateMissionCallback, this);
         depthSubcrisber_ = nh_->subscribe("/provider_depth/depth", 100, &ProcUnderwaterComNode::DepthCallback, this);
-        // ioSubcrisber_ = nh_->subscribe("/provider_actuators/return_action", 100, &ProcUnderwaterComNode::IOCallback, this);
+        updateMissionSubcrisber_ = nh_->subscribe("/proc_underwater_com/mission_state_msg", 100, &ProcUnderwaterComNode::MissionStateCallback, this);
+        syncSubscriber_ = nh_->subscribe("/proc_underwater_com/sync_rcv_msg", 100, &ProcUnderwaterComNode::SyncCallback, this);
         
         // Advertisers
         underwaterComPublisher_ = nh_->advertise<std_msgs::UInt64>("/proc_underwater_com/send_msgs", 100);
-        // auvStateKillPublisher_ = nh_->advertise<std_msgs::Bool>("/proc_underwater_com/other_auv_state_kill", 100);
-        // auvStateMissionPublisher_ = nh_->advertise<std_msgs::Bool>("/proc_underwater_com/other_auv_state_mission", 100);
-        auvDepthPublisher_ = nh_->advertise<std_msgs::Float32>("/proc_underwater_com/other_auv_depth", 100,true); //msg latched
-        auvIOPublisher_ = nh_->advertise<std_msgs::UInt8MultiArray>("/proc_underwater_com/other_auv_io", 100);
+        auvMissionPublisher_ = nh_->advertise<std_msgs::UInt8MultiArray>("/proc_underwater_com/sub_mission_status_msg", 100,true);
+        otherauvMissionPublisher_ = nh_->advertise<std_msgs::UInt8MultiArray>("/proc_underwater_com/other_sub_mission_status_msg", 100,true);
+        syncPublisher_ =  nh_->advertise<std_msgs::Bool>("/proc_underwater_com/sync_send_msg", 100,true);
 
         // Service  
-        underwaterComGetMissionList_ = nh_->advertiseService("/proc_underwater_com/get_mission_list", &ProcUnderwaterComNode::GetMissionList, this);
-        underwaterComUpdateMissionList_ = nh_->advertiseService("/proc_underwater_com/update_mission_list", &ProcUnderwaterComNode::UpdateMissionList, this);
         underwaterComClient_ = nh_->serviceClient<sonia_common::ModemSendCmd>("/provider_underwater_com/request");
         underwaterComClient_.waitForExistence(ros::Duration(20)); // Timeout 20 seconds
+        //add depth service
 
-        // ros::Duration(10).sleep(); // Wait for default config to be done
 
         ROS_INFO_STREAM("Settings up the role for the sensor");
         
@@ -72,7 +68,8 @@ namespace proc_underwater_com
         }
 
         InitMissionState(configuration_.getNumberMission());
-        process_thread = std::thread(std::bind(&ProcUnderwaterComNode::Process, this));
+        //process_thread = std::thread(std::bind(&ProcUnderwaterComNode::Process, this));
+        AUVID = configuration_.getNumberid();
     }
 
     // Node Destructor
@@ -93,57 +90,32 @@ namespace proc_underwater_com
     void ProcUnderwaterComNode::UnderwaterComInterpreterCallback(const std_msgs::UInt64 &msg)
     {
         Modem_M64_t packet = ConstructPacket(msg.data);
+        float_t auvDepth =0;
 
-        if(VerifyPacket(packet) >= 0)
+        if(VerifyPacket(packet))
         {
             switch (packet.cmd){
 
                 case mission: 
-                    UpdateMissionState(packet.data[0], packet.data[1]);
-                    AuvStateMissionInterpreter(packet.data[1]);
+                    UpdateMissionState_othersub(packet.data[0], packet.data[1]);
                 break; 
 
-                case depth: 
-                    float_t auvDepth = (float_t)packet.data[0] / 100.0;  //à voir
+                case depth:  // ajouter conversion du tableau
+                    auvDepth = (float_t)packet.data[0] / 100.0;  //à voir
                     AuvDepthInterpreter(auvDepth);
                 break;
 
+                case sync: 
+                    AuvSyncInterpreter(packet.write_read);
+                break;
+
+                default:
+                //ros warning
+                break;
                  
         }  
             
         }
-    }
-    
-    void ProcUnderwaterComNode::SendMessage()
-    {
-        Modem_M64_t send_packet;
-        std_msgs::UInt64 msg;
-
-        send_packet.header.packetNumber = 0b1;
-        send_packet.header.packetId = 0b1;
-        send_packet.header.endOfPacket = 0b1;
-        send_packet.AUV_ID = 8; //ou est il défini?
-        uint8_t cmd = 0;
-        
-
-        switch (cmd){ //D'ou provient la commande?
-
-            case mission: 
-                send_packet.cmd = mission;
-                send_packet.data[0] = SendMissionState(); // Modifier mission state
-                send_packet.data[1] = mission_state.at(send_packet.data[0]);
-            break;
-            
-            case depth: 
-                send_packet.cmd = depth;
-                send_packet.data[0] = (uint8_t)(lastDepth_ * 100.0); // à voir pour le typecast et type voulu
-            break;
-
-            
-        }
-
-        msg.data = DeconstructPacket(send_packet);
-        underwaterComPublisher_.publish(msg);
     }
 
     bool ProcUnderwaterComNode::SensorState(sonia_common::ModemSendCmd &srv)
@@ -160,60 +132,10 @@ namespace proc_underwater_com
         }
     }
 
-    bool ProcUnderwaterComNode::GetMissionList(sonia_common::ModemGetMissionList::Request &req, sonia_common::ModemGetMissionList::Response &res)
-    {
-        copy(mission_state.begin(), mission_state.end(), back_inserter(res.state));
-        return true;
-    }
-
-    bool ProcUnderwaterComNode::UpdateMissionList(sonia_common::ModemUpdateMissionList::Request &req, sonia_common::ModemUpdateMissionList::Response &res)
-    {
-        mission_state.at(req.mission_id) = req.mission_state;
-        res.array_updated = true; // For future use
-        return true;
-    }
-
-    /*void ProcUnderwaterComNode::AuvStateKillInterpreter(const bool state)
-    {
-        stateKill_.data = state;
-        auvStateKillPublisher_.publish(stateKill_);
-    }*/
-
-    void ProcUnderwaterComNode::AuvStateMissionInterpreter(const bool state)
-    {
-        stateMission_.data = state;
-        auvStateMissionPublisher_.publish(stateMission_);
-    }
 
     void ProcUnderwaterComNode::AuvDepthInterpreter(const float_t data)
     {
         other_sub_depth_.data = data;
-        auvDepthPublisher_.publish(other_sub_depth_);
-    }
-
-    void ProcUnderwaterComNode::AuvIOInterpreter(const uint8_t data)
-    {
-        std_msgs::UInt8MultiArray msg;
-
-        msg.data.clear();
-        msg.layout.dim[0].label = io_activation;
-
-        for(uint8_t i = 0; i < 4; ++i)
-        {
-            msg.data.push_back((data >> (i*2)) & 0x01);
-        }
-
-        auvIOPublisher_.publish(msg);
-    }
-
-    /*void ProcUnderwaterComNode::StateKillCallback(const std_msgs::Bool &msg)
-    {
-        lastStateKill_ = msg.data;
-    }*/
-
-    void ProcUnderwaterComNode::StateMissionCallback(const std_msgs::Bool &msg)
-    {
-        lastStateMission_ = msg.data;
     }
 
     void ProcUnderwaterComNode::DepthCallback(const std_msgs::Float32 &msg)
@@ -221,42 +143,6 @@ namespace proc_underwater_com
         lastDepth_ = msg.data;
     }
 
-    void ProcUnderwaterComNode::IOCallback(const sonia_common::ActuatorDoAction & msg) // Not tested as no implementation existed
-    {
-        if(msg.element == sonia_common::ActuatorDoAction::ELEMENT_DROPPER)
-        {
-            if(msg.side == sonia_common::ActuatorDoAction::SIDE_STARBOARD) lastIO_ = lastIO_ | msg.action;
-            if(msg.side == sonia_common::ActuatorDoAction::SIDE_PORT) lastIO_ = lastIO_ | (msg.action << 2);
-        }
-        else if(msg.element == sonia_common::ActuatorDoAction::ELEMENT_TORPEDO)
-        {
-            if(msg.side == sonia_common::ActuatorDoAction::SIDE_STARBOARD) lastIO_ = lastIO_ | (msg.action << 4);
-            if(msg.side == sonia_common::ActuatorDoAction::SIDE_PORT) lastIO_ = lastIO_ | (msg.action << 6);
-        }
-    }
-
-    void ProcUnderwaterComNode::Process()
-    {
-        ros::Rate r(0.2); // 0.2 Hz or 5 sec between each send
-        char link;
-        sonia_common::ModemSendCmd srv;
-        srv.request.cmd = CMD_GET_DIAGNOSTIC;
-
-        while(!ros::isShuttingDown())
-        {
-            if(SensorState(srv))
-            {
-                ROS_INFO_STREAM("Verifying link status");
-                link = (char) srv.response.link;
-            }
-            if(link == LINK_UP)
-            {
-                ROS_INFO_STREAM("Sending message");
-                SendMessage();
-            }
-            r.sleep();
-        }
-    }
     
     Modem_M64_t ProcUnderwaterComNode::ConstructPacket(const uint64_t data)
     {
@@ -268,23 +154,11 @@ namespace proc_underwater_com
         return *((uint64_t *)&packet);
     }
 
-    int8_t ProcUnderwaterComNode::VerifyPacket(const Modem_M64_t packet)
-    {
-        uint8_t nbPacket = packet.header.packetNumber;
-        uint8_t packetId = packet.header.packetId;
-
-        // Verification of the packet is conform to the protocol
-        if(nbPacket < 1 || packetId < 1)
-        {
-            ROS_WARN_STREAM("Problem with the packet received. Dropping packet");
-            return -EINVAL;
-        }
-        return packetId;
-    }
 
     void ProcUnderwaterComNode::InitMissionState(uint8_t size)
     {
-        mission_state.resize(size);
+        mission_state.data.resize(size); 
+        other_sub_mission_state.data.resize(size);
         size_mission_state = size;
     }
 
@@ -295,11 +169,60 @@ namespace proc_underwater_com
 
     void ProcUnderwaterComNode::UpdateMissionState(uint8_t index, int8_t state)
     {
-        mission_state.at(index) = state;
+        mission_state.data[index] = state;
+        auvMissionPublisher_.publish(mission_state); 
     }
 
     void ProcUnderwaterComNode::UpdateMissionState_othersub(uint8_t index, int8_t state)
     {
-        other_sub_mission_state.at(index) = state;
+        other_sub_mission_state.data[index] = state;
+        otherauvMissionPublisher_.publish(other_sub_mission_state); 
     }
+
+    int8_t ProcUnderwaterComNode::VerifyPacket(const Modem_M64_t packet){
+        
+        if(packet.AUV_ID == 7 || packet.AUV_ID == 8 ){
+            return 1;
+        } 
+        else{
+            return 0;
+        }
+    }
+
+    void ProcUnderwaterComNode::AuvSyncInterpreter(const bool state){
+        std_msgs::Bool sync_status;
+        sync_status.data = state;
+        syncPublisher_.publish(sync_status);
+    }
+
+    void ProcUnderwaterComNode::MissionStateCallback(const sonia_common::ModemUpdateMissionList::Request &msg){
+         
+         Modem_M64_t send_packet;
+        std_msgs::UInt64 send_msg;
+
+        send_packet.AUV_ID = AUVID; 
+        send_packet.cmd = mission;
+        send_packet.data[0] = msg.mission_id;
+        send_packet.data[1] = msg.mission_state;
+
+        send_msg.data = DeconstructPacket(send_packet);
+        underwaterComPublisher_.publish(send_msg);
+        UpdateMissionState(msg.mission_id,msg.mission_state);
+     }
+
+    void ProcUnderwaterComNode::SyncCallback(const std_msgs::Bool &msg){
+         
+         if (msg.data == true){
+            Modem_M64_t send_packet;
+            std_msgs::UInt64 send_msg;
+
+            send_packet.AUV_ID = AUVID; 
+            send_packet.cmd = sync;
+            send_packet.write_read = 1;
+
+            send_msg.data = DeconstructPacket(send_packet);
+            underwaterComPublisher_.publish(send_msg);
+         }
+     }
+
 }
