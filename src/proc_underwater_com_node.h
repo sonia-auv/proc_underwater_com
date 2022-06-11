@@ -63,14 +63,14 @@ class ProcUnderwaterComNode
 
     private:
 
-        void UnderwaterComInterpreterCallback(const std_msgs::UInt64 &msgg);
+        void UnderwaterComInterpreterCallback(const std_msgs::UInt64 &msg);
         bool SensorState(sonia_common::ModemSendCmd &srv);
 
         void AuvStateMissionInterpreter(const bool state);
         void AuvDepthInterpreter(const float_t data);
         void AuvSyncInterpreter(const bool state);
 
-        void MissionStateCallback(const sonia_common::ModemUpdateMissionList::Request &msg);
+        void MissionStateCallback(const sonia_common::ModemUpdateMissionList &msg);
         void SyncCallback(const std_msgs::Bool &msg);
         void StateMissionCallback(const std_msgs::Bool &msg);
         void DepthCallback(const std_msgs::Float32 &msg);

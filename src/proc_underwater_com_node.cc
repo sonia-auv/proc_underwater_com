@@ -90,7 +90,8 @@ namespace proc_underwater_com
     void ProcUnderwaterComNode::UnderwaterComInterpreterCallback(const std_msgs::UInt64 &msg)
     {
         Modem_M64_t packet = ConstructPacket(msg.data);
-        float_t auvDepth =0;
+        float_t auvDepth = 0;
+        uint8_t data[] = {packet.data[3], packet.data[2], packet.data[1], packet.data[0]};
 
         if(VerifyPacket(packet))
         {
@@ -100,17 +101,17 @@ namespace proc_underwater_com
                     UpdateMissionState_othersub(packet.data[0], packet.data[1]);
                 break; 
 
-                case depth:  // ajouter conversion du tableau
-                    auvDepth = (float_t)packet.data[0] / 100.0;  //à voir
+                case depth:  
+                    memcpy(&auvDepth,&data, sizeof(auvDepth)); //À TESTER
+                    auvDepth = auvDepth / 100.0; 
                     AuvDepthInterpreter(auvDepth);
                 break;
-
                 case sync: 
                     AuvSyncInterpreter(packet.write_read);
                 break;
 
                 default:
-                //ros warning
+                    ROS_INFO("Unknown command received: No action associated");
                 break;
                  
         }  
@@ -195,7 +196,7 @@ namespace proc_underwater_com
         syncPublisher_.publish(sync_status);
     }
 
-    void ProcUnderwaterComNode::MissionStateCallback(const sonia_common::ModemUpdateMissionList::Request &msg){ //erreur compilation du type de sonia common
+    void ProcUnderwaterComNode::MissionStateCallback(const sonia_common::ModemUpdateMissionList &msg){
          
          Modem_M64_t send_packet;
         std_msgs::UInt64 send_msg;
