@@ -43,7 +43,7 @@
 #include <sonia_common/Modem_Definitions.h>
 #include <sonia_common/ActuatorDoAction.h>
 #include <sonia_common/ModemSendCmd.h>
-#include <sonia_common/ModemGetMissionList.h>
+//#include <sonia_common/ModemGetMissionList.h>
 #include <sonia_common/ModemUpdateMissionList.h>
 
 #define SIZE_UINT8 256
@@ -64,10 +64,7 @@ class ProcUnderwaterComNode
     private:
 
         void UnderwaterComInterpreterCallback(const std_msgs::UInt64 &msgg);
-        void SendMessage();
         bool SensorState(sonia_common::ModemSendCmd &srv);
-        bool GetMissionList(sonia_common::ModemGetMissionList::Request &req, sonia_common::ModemGetMissionList::Response &res);
-        bool UpdateMissionList(sonia_common::ModemUpdateMissionList::Request &req, sonia_common::ModemUpdateMissionList::Response &res);
 
         void AuvStateMissionInterpreter(const bool state);
         void AuvDepthInterpreter(const float_t data);
