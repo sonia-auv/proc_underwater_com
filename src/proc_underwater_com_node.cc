@@ -44,27 +44,33 @@ namespace proc_underwater_com
         otherauvMissionPublisher_ = nh_->advertise<std_msgs::UInt8MultiArray>("/proc_underwater_com/other_sub_mission_status_msg", 100,true);
         syncPublisher_ =  nh_->advertise<std_msgs::Bool>("/proc_underwater_com/sync_send_msg", 100,true);
 
-        // Service  
-        underwaterComClient_ = nh_->serviceClient<sonia_common::ModemSendCmd>("/provider_underwater_com/request");
-        underwaterComClient_.waitForExistence(ros::Duration(20)); // Timeout 20 seconds
+        // Service
         //add depth service
-
-
-        ROS_INFO_STREAM("Settings up the role for the sensor");
-        
-        sonia_common::ModemSendCmd srv;
-        srv.request.cmd = CMD_SET_SETTINGS;
-        srv.request.role = (uint8_t) configuration_.getRole().at(0);
-        srv.request.channel = std::stoi(configuration_.getChannel());
-
-        if(SensorState(srv))
+        if(strcmp(std::getenv("AUV"), "LOCAL") == 0)
         {
-            ROS_INFO("Role is : %c", srv.response.role);
-            ROS_INFO("Channel is : %d", srv.response.channel);
+            ROS_WARM_STREAM("Node launched in local. No connection to the service from the provider");
         }
         else
         {
-            ros::shutdown();
+            underwaterComClient_ = nh_->serviceClient<sonia_common::ModemSendCmd>("/provider_underwater_com/request");
+            underwaterComClient_.waitForExistence(ros::Duration(20)); // Timeout 20 seconds
+
+            ROS_INFO_STREAM("Settings up the role for the sensor");
+            
+            sonia_common::ModemSendCmd srv;
+            srv.request.cmd = CMD_SET_SETTINGS;
+            srv.request.role = (uint8_t) configuration_.getRole().at(0);
+            srv.request.channel = std::stoi(configuration_.getChannel());
+
+            if(SensorState(srv))
+            {
+                ROS_INFO("Role is : %c", srv.response.role);
+                ROS_INFO("Channel is : %d", srv.response.channel);
+            }
+            else
+            {
+                ros::shutdown();
+            }
         }
 
         InitMissionState(configuration_.getNumberMission());
