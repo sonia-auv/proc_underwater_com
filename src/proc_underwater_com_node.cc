@@ -48,7 +48,7 @@ namespace proc_underwater_com
         //add depth service
         if(strcmp(std::getenv("AUV"), "LOCAL") == 0)
         {
-            ROS_WARM_STREAM("Node launched in local. No connection to the service from the provider");
+            ROS_WARN_STREAM("Node launched in local. No connection to the service from the provider");
         }
         else
         {
