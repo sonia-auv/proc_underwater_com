@@ -75,7 +75,7 @@ class ProcUnderwaterComNode
         void StateKillCallback(const std_msgs::Bool &msg);
         void StateMissionCallback(const std_msgs::Bool &msg);
         void DepthCallback(const std_msgs::Float32 &msg);
-        void IOCallback(const sonia_common::ActuatorDoAction &msg);
+        // void IOCallback(const sonia_common::ActuatorDoAction &msg);
 
         void Process();
         Modem_M64_t ConstructPacket(const uint64_t data);

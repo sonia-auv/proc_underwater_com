@@ -37,7 +37,7 @@ namespace proc_underwater_com
         stateKillSubcrisber_ = nh_->subscribe("/provider_kill_mission/kill_switch_msg", 100, &ProcUnderwaterComNode::StateKillCallback, this);
         stateMissionSubcrisber_ = nh_->subscribe("/provider_kill_mission/mission_switch_msg", 100, &ProcUnderwaterComNode::StateMissionCallback, this);
         depthSubcrisber_ = nh_->subscribe("/provider_depth/depth", 100, &ProcUnderwaterComNode::DepthCallback, this);
-        ioSubcrisber_ = nh_->subscribe("/provider_actuators/return_action", 100, &ProcUnderwaterComNode::IOCallback, this);
+        // ioSubcrisber_ = nh_->subscribe("/provider_actuators/return_action", 100, &ProcUnderwaterComNode::IOCallback, this);
         
         // Advertisers
         underwaterComPublisher_ = nh_->advertise<std_msgs::UInt64>("/proc_underwater_com/send_msgs", 100);
@@ -182,19 +182,19 @@ namespace proc_underwater_com
         lastDepth_ = msg.data;
     }
 
-    void ProcUnderwaterComNode::IOCallback(const sonia_common::ActuatorDoAction & msg) // Not tested as no implementation existed
-    {
-        if(msg.element == sonia_common::ActuatorDoAction::ELEMENT_DROPPER)
-        {
-            if(msg.side == sonia_common::ActuatorDoAction::SIDE_STARBOARD) lastIO_ = lastIO_ | msg.action;
-            if(msg.side == sonia_common::ActuatorDoAction::SIDE_PORT) lastIO_ = lastIO_ | (msg.action << 2);
-        }
-        else if(msg.element == sonia_common::ActuatorDoAction::ELEMENT_TORPEDO)
-        {
-            if(msg.side == sonia_common::ActuatorDoAction::SIDE_STARBOARD) lastIO_ = lastIO_ | (msg.action << 4);
-            if(msg.side == sonia_common::ActuatorDoAction::SIDE_PORT) lastIO_ = lastIO_ | (msg.action << 6);
-        }
-    }
+    // void ProcUnderwaterComNode::IOCallback(const sonia_common::ActuatorDoAction & msg) // Not tested as no implementation existed
+    // {
+    //     if(msg.element == sonia_common::ActuatorDoAction::ELEMENT_DROPPER)
+    //     {
+    //         if(msg.side == sonia_common::ActuatorDoAction::SIDE_STARBOARD) lastIO_ = lastIO_ | msg.action;
+    //         if(msg.side == sonia_common::ActuatorDoAction::SIDE_PORT) lastIO_ = lastIO_ | (msg.action << 2);
+    //     }
+    //     else if(msg.element == sonia_common::ActuatorDoAction::ELEMENT_TORPEDO)
+    //     {
+    //         if(msg.side == sonia_common::ActuatorDoAction::SIDE_STARBOARD) lastIO_ = lastIO_ | (msg.action << 4);
+    //         if(msg.side == sonia_common::ActuatorDoAction::SIDE_PORT) lastIO_ = lastIO_ | (msg.action << 6);
+    //     }
+    // }
 
     void ProcUnderwaterComNode::Process()
     {
