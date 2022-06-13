@@ -47,8 +47,8 @@ namespace proc_underwater_com
         auvIOPublisher_ = nh_->advertise<std_msgs::UInt8MultiArray>("/proc_underwater_com/other_auv_io", 100);
 
         // Service  
-        underwaterComGetMissionList_ = nh_->advertiseService("/proc_underwater_com/get_mission_list", &ProcUnderwaterComNode::GetMissionList, this);
-        underwaterComUpdateMissionList_ = nh_->advertiseService("/proc_underwater_com/update_mission_list", &ProcUnderwaterComNode::UpdateMissionList, this);
+        // underwaterComGetMissionList_ = nh_->advertiseService("/proc_underwater_com/get_mission_list", &ProcUnderwaterComNode::GetMissionList, this);
+        // underwaterComUpdateMissionList_ = nh_->advertiseService("/proc_underwater_com/update_mission_list", &ProcUnderwaterComNode::UpdateMissionList, this);
         underwaterComClient_ = nh_->serviceClient<sonia_common::ModemSendCmd>("/provider_underwater_com/request");
 
         InitMissionState(configuration_.getNumberMission());
@@ -121,18 +121,18 @@ namespace proc_underwater_com
         }
     }
 
-    bool ProcUnderwaterComNode::GetMissionList(sonia_common::ModemGetMissionList::Request &req, sonia_common::ModemGetMissionList::Response &res)
-    {
-        copy(mission_state.begin(), mission_state.end(), back_inserter(res.state));
-        return true;
-    }
+    // bool ProcUnderwaterComNode::GetMissionList(sonia_common::ModemGetMissionList::Request &req, sonia_common::ModemGetMissionList::Response &res)
+    // {
+    //     copy(mission_state.begin(), mission_state.end(), back_inserter(res.state));
+    //     return true;
+    // }
 
-    bool ProcUnderwaterComNode::UpdateMissionList(sonia_common::ModemUpdateMissionList::Request &req, sonia_common::ModemUpdateMissionList::Response &res)
-    {
-        mission_state.at(req.mission_id) = req.mission_state;
-        res.array_updated = true; // For future use
-        return true;
-    }
+    // bool ProcUnderwaterComNode::UpdateMissionList(sonia_common::ModemUpdateMissionList::Request &req, sonia_common::ModemUpdateMissionList::Response &res)
+    // {
+    //     mission_state.at(req.mission_id) = req.mission_state;
+    //     res.array_updated = true; // For future use
+    //     return true;
+    // }
 
     void ProcUnderwaterComNode::AuvStateKillInterpreter(const bool state)
     {
