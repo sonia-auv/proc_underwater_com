@@ -50,26 +50,6 @@ namespace proc_underwater_com
         underwaterComGetMissionList_ = nh_->advertiseService("/proc_underwater_com/get_mission_list", &ProcUnderwaterComNode::GetMissionList, this);
         underwaterComUpdateMissionList_ = nh_->advertiseService("/proc_underwater_com/update_mission_list", &ProcUnderwaterComNode::UpdateMissionList, this);
         underwaterComClient_ = nh_->serviceClient<sonia_common::ModemSendCmd>("/provider_underwater_com/request");
-        underwaterComClient_.waitForExistence(ros::Duration(20)); // Timeout 20 seconds
-
-        // ros::Duration(10).sleep(); // Wait for default config to be done
-
-        ROS_INFO_STREAM("Settings up the role for the sensor");
-        
-        sonia_common::ModemSendCmd srv;
-        srv.request.cmd = CMD_SET_SETTINGS;
-        srv.request.role = (uint8_t) configuration_.getRole().at(0);
-        srv.request.channel = std::stoi(configuration_.getChannel());
-
-        if(SensorState(srv))
-        {
-            ROS_INFO("Role is : %c", srv.response.role);
-            ROS_INFO("Channel is : %d", srv.response.channel);
-        }
-        else
-        {
-            ros::shutdown();
-        }
 
         InitMissionState(configuration_.getNumberMission());
         process_thread = std::thread(std::bind(&ProcUnderwaterComNode::Process, this));
