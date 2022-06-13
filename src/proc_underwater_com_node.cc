@@ -44,7 +44,7 @@ namespace proc_underwater_com
         auvStateKillPublisher_ = nh_->advertise<std_msgs::Bool>("/proc_underwater_com/other_auv_state_kill", 100);
         auvStateMissionPublisher_ = nh_->advertise<std_msgs::Bool>("/proc_underwater_com/other_auv_state_mission", 100);
         auvDepthPublisher_ = nh_->advertise<std_msgs::Float32>("/proc_underwater_com/other_auv_depth", 100);
-        auvIOPublisher_ = nh_->advertise<std_msgs::UInt8MultiArray>("/proc_underwater_com/other_auv_io", 100);
+        // auvIOPublisher_ = nh_->advertise<std_msgs::UInt8MultiArray>("/proc_underwater_com/other_auv_io", 100);
 
         // Service  
         // underwaterComGetMissionList_ = nh_->advertiseService("/proc_underwater_com/get_mission_list", &ProcUnderwaterComNode::GetMissionList, this);
@@ -152,20 +152,20 @@ namespace proc_underwater_com
         auvDepthPublisher_.publish(depth_);
     }
 
-    void ProcUnderwaterComNode::AuvIOInterpreter(const uint8_t data)
-    {
-        std_msgs::UInt8MultiArray msg;
+    // void ProcUnderwaterComNode::AuvIOInterpreter(const uint8_t data)
+    // {
+    //     std_msgs::UInt8MultiArray msg;
 
-        msg.data.clear();
-        msg.layout.dim[0].label = io_activation;
+    //     msg.data.clear();
+    //     msg.layout.dim[0].label = io_activation;
 
-        for(uint8_t i = 0; i < 4; ++i)
-        {
-            msg.data.push_back((data >> (i*2)) & 0x01);
-        }
+    //     for(uint8_t i = 0; i < 4; ++i)
+    //     {
+    //         msg.data.push_back((data >> (i*2)) & 0x01);
+    //     }
 
-        auvIOPublisher_.publish(msg);
-    }
+    //     auvIOPublisher_.publish(msg);
+    // }
 
     void ProcUnderwaterComNode::StateKillCallback(const std_msgs::Bool &msg)
     {
