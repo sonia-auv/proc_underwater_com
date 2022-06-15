@@ -44,27 +44,33 @@ namespace proc_underwater_com
         otherauvMissionPublisher_ = nh_->advertise<std_msgs::UInt8MultiArray>("/proc_underwater_com/other_sub_mission_status_msg", 100,true);
         syncPublisher_ =  nh_->advertise<std_msgs::Bool>("/proc_underwater_com/sync_send_msg", 100,true);
 
-        // Service  
-        underwaterComClient_ = nh_->serviceClient<sonia_common::ModemSendCmd>("/provider_underwater_com/request");
-        underwaterComClient_.waitForExistence(ros::Duration(20)); // Timeout 20 seconds
+        // Service
         //add depth service
-
-
-        ROS_INFO_STREAM("Settings up the role for the sensor");
-        
-        sonia_common::ModemSendCmd srv;
-        srv.request.cmd = CMD_SET_SETTINGS;
-        srv.request.role = (uint8_t) configuration_.getRole().at(0);
-        srv.request.channel = std::stoi(configuration_.getChannel());
-
-        if(SensorState(srv))
+        if(strcmp(std::getenv("AUV"), "LOCAL") == 0)
         {
-            ROS_INFO("Role is : %c", srv.response.role);
-            ROS_INFO("Channel is : %d", srv.response.channel);
+            ROS_WARN_STREAM("Node launched in local. No connection to the service from the provider");
         }
         else
         {
-            ros::shutdown();
+            underwaterComClient_ = nh_->serviceClient<sonia_common::ModemSendCmd>("/provider_underwater_com/request");
+            underwaterComClient_.waitForExistence(ros::Duration(20)); // Timeout 20 seconds
+
+            ROS_INFO_STREAM("Settings up the role for the sensor");
+            
+            sonia_common::ModemSendCmd srv;
+            srv.request.cmd = CMD_SET_SETTINGS;
+            srv.request.role = (uint8_t) configuration_.getRole().at(0);
+            srv.request.channel = std::stoi(configuration_.getChannel());
+
+            if(SensorState(srv))
+            {
+                ROS_INFO("Role is : %c", srv.response.role);
+                ROS_INFO("Channel is : %d", srv.response.channel);
+            }
+            else
+            {
+                ros::shutdown();
+            }
         }
 
         InitMissionState(configuration_.getNumberMission());
@@ -90,7 +96,8 @@ namespace proc_underwater_com
     void ProcUnderwaterComNode::UnderwaterComInterpreterCallback(const std_msgs::UInt64 &msg)
     {
         Modem_M64_t packet = ConstructPacket(msg.data);
-        float_t auvDepth =0;
+        float_t auvDepth = 0;
+        uint8_t data[] = {packet.data[3], packet.data[2], packet.data[1], packet.data[0]};
 
         if(VerifyPacket(packet))
         {
@@ -100,17 +107,17 @@ namespace proc_underwater_com
                     UpdateMissionState_othersub(packet.data[0], packet.data[1]);
                 break; 
 
-                case depth:  // ajouter conversion du tableau
-                    auvDepth = (float_t)packet.data[0] / 100.0;  //à voir
+                case depth:  
+                    memcpy(&auvDepth,&data, sizeof(auvDepth)); //À TESTER
+                    auvDepth = auvDepth / 100.0; 
                     AuvDepthInterpreter(auvDepth);
                 break;
-
                 case sync: 
                     AuvSyncInterpreter(packet.write_read);
                 break;
 
                 default:
-                //ros warning
+                    ROS_INFO("Unknown command received: No action associated");
                 break;
                  
         }  
@@ -195,7 +202,11 @@ namespace proc_underwater_com
         syncPublisher_.publish(sync_status);
     }
 
+<<<<<<< HEAD
     void ProcUnderwaterComNode::MissionStateCallback(const sonia_common::ModemUpdateMissionList &msg){ 
+=======
+    void ProcUnderwaterComNode::MissionStateCallback(const sonia_common::ModemUpdateMissionList &msg){
+>>>>>>> c2160782a15ea7d5573a77957e4a9edfae55a1f7
          
          Modem_M64_t send_packet;
         std_msgs::UInt64 send_msg;
