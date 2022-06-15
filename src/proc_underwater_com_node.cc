@@ -195,7 +195,7 @@ namespace proc_underwater_com
         syncPublisher_.publish(sync_status);
     }
 
-    void ProcUnderwaterComNode::MissionStateCallback(const sonia_common::ModemUpdateMissionList::Request &msg){ //erreur compilation du type de sonia common
+    void ProcUnderwaterComNode::MissionStateCallback(const sonia_common::ModemUpdateMissionList &msg){ 
          
          Modem_M64_t send_packet;
         std_msgs::UInt64 send_msg;
