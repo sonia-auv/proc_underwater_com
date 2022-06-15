@@ -43,9 +43,11 @@ namespace proc_underwater_com
         auvMissionPublisher_ = nh_->advertise<std_msgs::UInt8MultiArray>("/proc_underwater_com/sub_mission_status_msg", 100,true);
         otherauvMissionPublisher_ = nh_->advertise<std_msgs::UInt8MultiArray>("/proc_underwater_com/other_sub_mission_status_msg", 100,true);
         syncPublisher_ =  nh_->advertise<std_msgs::Bool>("/proc_underwater_com/sync_send_msg", 100,true);
+        DepthPublisher_ =  nh_->advertise<std_msgs::Float32>("/proc_underwater_com/other_sub_depth", 100,true);
 
         // Service
-        //add depth service
+        depthSrv_ = nh_->advertiseService("/proc_underwater_com/depth_request", &ProcUnderwaterComNode::DepthRequest, this);
+
         if(strcmp(std::getenv("AUV"), "LOCAL") == 0)
         {
             ROS_WARN_STREAM("Node launched in local. No connection to the service from the provider");
@@ -97,7 +99,7 @@ namespace proc_underwater_com
     {
         Modem_M64_t packet = ConstructPacket(msg.data);
         float_t auvDepth = 0;
-        uint8_t data[] = {packet.data[3], packet.data[2], packet.data[1], packet.data[0]};
+        uint8_t data[] = {packet.data[0], packet.data[1], packet.data[2], packet.data[3]};
 
         if(VerifyPacket(packet))
         {
@@ -107,13 +109,20 @@ namespace proc_underwater_com
                     UpdateMissionState_othersub(packet.data[0], packet.data[1]);
                 break; 
 
-                case depth:  
-                    memcpy(&auvDepth,&data, sizeof(auvDepth)); //À TESTER
-                    auvDepth = auvDepth / 100.0; 
-                    AuvDepthInterpreter(auvDepth);
+                case depth:
+                    //receive depth from other sub and publish it
+                    if(packet.rec_send == 0){  
+                        memcpy(&auvDepth,&data, sizeof(float)); //À TESTER
+                        auvDepth = auvDepth / 100.0;
+                        AuvDepthInterpreter(auvDepth);
+
+                    //request depth from other sub
+                    } else if (packet.rec_send == 1){
+                        SendDepth();
+                    }
                 break;
                 case sync: 
-                    AuvSyncInterpreter(packet.write_read);
+                    AuvSyncInterpreter(packet.rec_send);
                 break;
 
                 default:
@@ -142,7 +151,10 @@ namespace proc_underwater_com
 
     void ProcUnderwaterComNode::AuvDepthInterpreter(const float_t data)
     {
+        std_msgs::Float32 Depth;
         other_sub_depth_.data = data;
+        Depth.data = data;
+        DepthPublisher_.publish(Depth);
     }
 
     void ProcUnderwaterComNode::DepthCallback(const std_msgs::Float32 &msg)
@@ -169,10 +181,6 @@ namespace proc_underwater_com
         size_mission_state = size;
     }
 
-    uint8_t ProcUnderwaterComNode::SendMissionState()
-    {
-        return (index_++) % size_mission_state;
-    }
 
     void ProcUnderwaterComNode::UpdateMissionState(uint8_t index, int8_t state)
     {
@@ -202,13 +210,9 @@ namespace proc_underwater_com
         syncPublisher_.publish(sync_status);
     }
 
-<<<<<<< HEAD
     void ProcUnderwaterComNode::MissionStateCallback(const sonia_common::ModemUpdateMissionList &msg){ 
-=======
-    void ProcUnderwaterComNode::MissionStateCallback(const sonia_common::ModemUpdateMissionList &msg){
->>>>>>> c2160782a15ea7d5573a77957e4a9edfae55a1f7
          
-         Modem_M64_t send_packet;
+        Modem_M64_t send_packet;
         std_msgs::UInt64 send_msg;
 
         send_packet.AUV_ID = AUVID; 
@@ -229,11 +233,48 @@ namespace proc_underwater_com
 
             send_packet.AUV_ID = AUVID; 
             send_packet.cmd = sync;
-            send_packet.write_read = 1;
+            send_packet.rec_send = 1;
 
             send_msg.data = DeconstructPacket(send_packet);
             underwaterComPublisher_.publish(send_msg);
          }
+     }
+
+     bool ProcUnderwaterComNode::DepthRequest(std_srvs::Empty::Request &DepthRsq, std_srvs::Empty::Response &DepthRsp){
+        
+        Modem_M64_t send_packet;
+        std_msgs::UInt64 send_msg;
+
+        send_packet.AUV_ID = AUVID; 
+        send_packet.cmd = depth;
+        send_packet.rec_send = 1;
+
+        send_msg.data = DeconstructPacket(send_packet);
+        underwaterComPublisher_.publish(send_msg);
+
+        return true;
+     }
+
+     void ProcUnderwaterComNode::SendDepth(){
+
+        Modem_M64_t send_packet;
+        std_msgs::UInt64 send_msg;
+        uint8_t *data;
+        float auvDepth;
+        auvDepth = lastDepth_ / 100.0; 
+
+        data = reinterpret_cast<uint8_t*>(&auvDepth);
+        
+        send_packet.AUV_ID = AUVID; 
+        send_packet.cmd = depth;
+        send_packet.rec_send = 0;
+        send_packet.data[0]=data[0];
+        send_packet.data[1]=data[1];
+        send_packet.data[2]=data[2];
+        send_packet.data[3]=data[3];
+
+        send_msg.data = DeconstructPacket(send_packet);
+        underwaterComPublisher_.publish(send_msg);
      }
 
 }

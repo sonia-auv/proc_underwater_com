@@ -6,7 +6,7 @@
 typedef struct
 {
     uint8_t AUV_ID :7;
-    uint8_t write_read : 1;
+    uint8_t rec_send : 1; // 0 = receive 1 = send
     uint8_t cmd;
     uint8_t data[6];
 } Modem_M64_t;

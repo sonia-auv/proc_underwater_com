@@ -31,6 +31,7 @@
 #include <std_msgs/Float32.h>
 #include <std_msgs/UInt64.h>
 #include <std_msgs/UInt8MultiArray.h>
+#include <std_srvs/Empty.h>
 #include <string>
 #include <thread>
 #include <mutex>
@@ -75,15 +76,17 @@ class ProcUnderwaterComNode
         void StateMissionCallback(const std_msgs::Bool &msg);
         void DepthCallback(const std_msgs::Float32 &msg);
 
+        bool DepthRequest(std_srvs::Empty::Request &DepthRsq, std_srvs::Empty::Response &DepthRsp);
+
         void Process();
         Modem_M64_t ConstructPacket(const uint64_t data);
         uint64_t DeconstructPacket(const Modem_M64_t packet);
         int8_t VerifyPacket(const Modem_M64_t packet);
 
         void InitMissionState(uint8_t size);
-        uint8_t SendMissionState();
         void UpdateMissionState(uint8_t index, int8_t state);
         void UpdateMissionState_othersub(uint8_t index, int8_t state);
+        void SendDepth();
         
         ros::NodeHandlePtr nh_;
         Configuration configuration_;
@@ -97,8 +100,10 @@ class ProcUnderwaterComNode
         ros::Publisher auvMissionPublisher_;
         ros::Publisher otherauvMissionPublisher_;
         ros::Publisher syncPublisher_;
+        ros::Publisher DepthPublisher_;
 
         ros::ServiceClient underwaterComClient_;
+        ros::ServiceServer depthSrv_;
 
         std::thread process_thread;
         std::mutex sensor_mutex;
