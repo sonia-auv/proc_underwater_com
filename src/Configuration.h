@@ -39,16 +39,12 @@ namespace proc_underwater_com
         Configuration(const ros::NodeHandlePtr &nh);
         ~Configuration();
 
-        std::string getRole() const {return role;}
-        std::string getChannel() const {return channel;}
         int getNumberMission() const {return nbmissions;}
 
     private:
 
         ros::NodeHandlePtr nh;
 
-        std::string role;
-        std::string channel;
         int nbmissions;
 
         void Deserialize();

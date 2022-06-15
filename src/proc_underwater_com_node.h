@@ -41,9 +41,9 @@
 #include "Configuration.h"
 #include "modem_data.h"
 #include <sonia_common/Modem_Definitions.h>
-#include <sonia_common/ActuatorDoAction.h>
+// #include <sonia_common/ActuatorDoAction.h>
 #include <sonia_common/ModemSendCmd.h>
-#include <sonia_common/ModemGetMissionList.h>
+// #include <sonia_common/ModemGetMissionList.h>
 #include <sonia_common/ModemUpdateMissionList.h>
 
 #define SIZE_UINT8 256
@@ -64,18 +64,18 @@ class ProcUnderwaterComNode
         void UnderwaterComInterpreterCallback(const std_msgs::UInt64 &msgg);
         void SendMessage();
         bool SensorState(sonia_common::ModemSendCmd &srv);
-        bool GetMissionList(sonia_common::ModemGetMissionList::Request &req, sonia_common::ModemGetMissionList::Response &res);
-        bool UpdateMissionList(sonia_common::ModemUpdateMissionList::Request &req, sonia_common::ModemUpdateMissionList::Response &res);
+        // bool GetMissionList(sonia_common::ModemGetMissionList::Request &req, sonia_common::ModemGetMissionList::Response &res);
+        // bool UpdateMissionList(sonia_common::ModemUpdateMissionList::Request &req, sonia_common::ModemUpdateMissionList::Response &res);
 
         void AuvStateKillInterpreter(const bool state);
         void AuvStateMissionInterpreter(const bool state);
         void AuvDepthInterpreter(const float_t data);
-        void AuvIOInterpreter(const uint8_t data);
+        // void AuvIOInterpreter(const uint8_t data);
 
         void StateKillCallback(const std_msgs::Bool &msg);
         void StateMissionCallback(const std_msgs::Bool &msg);
         void DepthCallback(const std_msgs::Float32 &msg);
-        void IOCallback(const sonia_common::ActuatorDoAction &msg);
+        // void IOCallback(const sonia_common::ActuatorDoAction &msg);
 
         void Process();
         Modem_M64_t ConstructPacket(const uint64_t data);
@@ -99,11 +99,11 @@ class ProcUnderwaterComNode
         ros::Publisher auvStateKillPublisher_;
         ros::Publisher auvStateMissionPublisher_;
         ros::Publisher auvDepthPublisher_;
-        ros::Publisher auvIOPublisher_;
+        // ros::Publisher auvIOPublisher_;
 
         ros::ServiceClient underwaterComClient_;
-        ros::ServiceServer underwaterComGetMissionList_;
-        ros::ServiceServer underwaterComUpdateMissionList_;
+        // ros::ServiceServer underwaterComGetMissionList_;
+        // ros::ServiceServer underwaterComUpdateMissionList_;
 
         std::thread process_thread;
         std::mutex sensor_mutex;
