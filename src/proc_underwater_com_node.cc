@@ -40,10 +40,10 @@ namespace proc_underwater_com
         
         // Advertisers
         underwaterComPublisher_ = nh_->advertise<std_msgs::UInt64>("/proc_underwater_com/send_msgs", 100);
-        auvMissionPublisher_ = nh_->advertise<std_msgs::UInt8MultiArray>("/proc_underwater_com/sub_mission_status_msg", 100,true);
-        otherauvMissionPublisher_ = nh_->advertise<std_msgs::UInt8MultiArray>("/proc_underwater_com/other_sub_mission_status_msg", 100,true);
-        syncPublisher_ =  nh_->advertise<std_msgs::Bool>("/proc_underwater_com/sync_send_msg", 100,true);
-        DepthPublisher_ =  nh_->advertise<std_msgs::Float32>("/proc_underwater_com/other_sub_depth", 100,true);
+        auvMissionPublisher_ = nh_->advertise<std_msgs::Int8MultiArray>("/proc_underwater_com/sub_mission_list", 100, true);
+        otherauvMissionPublisher_ = nh_->advertise<std_msgs::Int8MultiArray>("/proc_underwater_com/other_sub_mission_list", 100, true);
+        syncPublisher_ =  nh_->advertise<std_msgs::Bool>("/proc_underwater_com/sync_send_msg", 100, true);
+        DepthPublisher_ =  nh_->advertise<std_msgs::Float32>("/proc_underwater_com/other_sub_depth", 100, true);
 
         // Service
         depthSrv_ = nh_->advertiseService("/proc_underwater_com/depth_request", &ProcUnderwaterComNode::DepthRequest, this);

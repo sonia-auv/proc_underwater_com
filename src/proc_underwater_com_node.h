@@ -31,6 +31,7 @@
 #include <std_msgs/Float32.h>
 #include <std_msgs/UInt64.h>
 #include <std_msgs/UInt8MultiArray.h>
+#include <std_msgs/Int8MultiArray.h>
 #include <std_srvs/Empty.h>
 #include <string>
 #include <thread>
@@ -112,10 +113,9 @@ class ProcUnderwaterComNode
         std_msgs::Float32 depth_;
         std_msgs::Float32 other_sub_depth_;
 
-
         // Refer to read me to understand the use for it
-        std_msgs::UInt8MultiArray mission_state;
-        std_msgs::UInt8MultiArray other_sub_mission_state;
+        std_msgs::Int8MultiArray mission_state;
+        std_msgs::Int8MultiArray other_sub_mission_state;
         uint8_t index_ = 0;
         uint8_t size_mission_state;
         uint8_t AUVID = 0;
