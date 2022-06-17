@@ -43,7 +43,7 @@
 #include "Configuration.h"
 #include "modem_data.h"
 #include <sonia_common/Modem_Definitions.h>
-#include <sonia_common/ActuatorDoAction.h>
+// #include <sonia_common/ActuatorDoAction.h>
 #include <sonia_common/ModemSendCmd.h>
 //#include <sonia_common/ModemGetMissionList.h>
 #include <sonia_common/ModemUpdateMissionList.h>
