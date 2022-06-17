@@ -30,7 +30,8 @@ namespace proc_underwater_com
 
     Configuration::Configuration(const ros::NodeHandlePtr &nh)
         : nh(nh),
-          nbmissions(16)
+          nbmissions(16),
+          id(8)
     {
         Deserialize();
     }
