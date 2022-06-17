@@ -36,13 +36,13 @@ namespace proc_underwater_com
         underwaterComSubscriber_ = nh_->subscribe("/provider_underwater_com/receive_msgs", 100, &ProcUnderwaterComNode::UnderwaterComInterpreterCallback, this);
         depthSubcrisber_ = nh_->subscribe("/provider_depth/depth", 100, &ProcUnderwaterComNode::DepthCallback, this);
         updateMissionSubcrisber_ = nh_->subscribe("/proc_underwater_com/mission_state_msg", 100, &ProcUnderwaterComNode::MissionStateCallback, this);
-        syncSubscriber_ = nh_->subscribe("/proc_underwater_com/sync_rcv_msg", 100, &ProcUnderwaterComNode::SyncCallback, this);
+        syncSubscriber_ = nh_->subscribe("/proc_underwater_com/send_sync_request", 100, &ProcUnderwaterComNode::SyncCallback, this);
         
         // Advertisers
         underwaterComPublisher_ = nh_->advertise<std_msgs::UInt64>("/proc_underwater_com/send_msgs", 100);
         auvMissionPublisher_ = nh_->advertise<std_msgs::Int8MultiArray>("/proc_underwater_com/sub_mission_list", 100, true);
         otherauvMissionPublisher_ = nh_->advertise<std_msgs::Int8MultiArray>("/proc_underwater_com/other_sub_mission_list", 100, true);
-        syncPublisher_ =  nh_->advertise<std_msgs::Bool>("/proc_underwater_com/sync_send_msg", 100, true);
+        syncPublisher_ =  nh_->advertise<std_msgs::Bool>("/proc_underwater_com/sync_requested", 100, true);
         DepthPublisher_ =  nh_->advertise<std_msgs::Float32>("/proc_underwater_com/other_sub_depth", 100, true);
 
         // Service
@@ -99,6 +99,7 @@ namespace proc_underwater_com
     {
         Modem_M64_t packet = ConstructPacket(msg.data);
         float_t auvDepth = 0;
+        uint32_t temp = 0;
         uint8_t data[] = {packet.data[0], packet.data[1], packet.data[2], packet.data[3]};
 
         if(VerifyPacket(packet))
@@ -112,8 +113,8 @@ namespace proc_underwater_com
                 case depth:
                     //receive depth from other sub and publish it
                     if(packet.rec_send == 0){  
-                        memcpy(&auvDepth,&data, sizeof(float)); //À TESTER
-                        auvDepth = auvDepth / 100.0;
+                        memcpy(&temp,&data, sizeof(uint32_t));
+                        auvDepth = (float_t)temp / 100.0;
                         AuvDepthInterpreter(auvDepth);
 
                     //request depth from other sub
@@ -152,8 +153,8 @@ namespace proc_underwater_com
     void ProcUnderwaterComNode::AuvDepthInterpreter(const float_t data)
     {
         std_msgs::Float32 Depth;
-        other_sub_depth_.data = data;
-        Depth.data = data;
+        other_sub_depth_ = data;
+        Depth.data = other_sub_depth_;
         DepthPublisher_.publish(Depth);
     }
 
@@ -259,11 +260,11 @@ namespace proc_underwater_com
 
         Modem_M64_t send_packet;
         std_msgs::UInt64 send_msg;
-        uint8_t *data;
-        float auvDepth;
-        auvDepth = lastDepth_ / 100.0; 
+        uint8_t data[4] = {0,0,0,0};
+        uint32_t auvDepth;
+        auvDepth = lastDepth_ * 100.0; 
 
-        data = reinterpret_cast<uint8_t*>(&auvDepth);
+        memcpy(&data,&auvDepth, sizeof(uint32_t));
         
         send_packet.AUV_ID = AUVID; 
         send_packet.cmd = depth;

@@ -111,7 +111,7 @@ class ProcUnderwaterComNode
 
         std_msgs::Bool stateMission_; 
         std_msgs::Float32 depth_;
-        std_msgs::Float32 other_sub_depth_;
+
 
         // Refer to read me to understand the use for it
         std_msgs::Int8MultiArray mission_state;
@@ -120,6 +120,7 @@ class ProcUnderwaterComNode
         uint8_t size_mission_state;
         uint8_t AUVID = 0;
         float lastDepth_;
+        float other_sub_depth_;
 };
 }
 
