@@ -43,14 +43,13 @@ namespace proc_underwater_com
         auvMissionPublisher_ = nh_->advertise<std_msgs::Int8MultiArray>("/proc_underwater_com/sub_mission_list", 100, true);
         otherauvMissionPublisher_ = nh_->advertise<std_msgs::Int8MultiArray>("/proc_underwater_com/other_sub_mission_list", 100, true);
         syncPublisher_ =  nh_->advertise<std_msgs::Bool>("/proc_underwater_com/sync_requested", 100, true);
-        DepthPublisher_ =  nh_->advertise<std_msgs::Float32>("/proc_underwater_com/other_sub_depth", 100, true);
+        DepthPublisher_ =  nh_->advertise<std_msgs::Float32>("/proc_underwater_com/other_sub_depth", 100);
 
         // Service
         depthSrv_ = nh_->advertiseService("/proc_underwater_com/depth_request", &ProcUnderwaterComNode::DepthRequest, this);
         underwaterComClient_ = nh_->serviceClient<sonia_common::ModemSendCmd>("/provider_underwater_com/request");
 
         InitMissionState(configuration_.getNumberMission());
-        //process_thread = std::thread(std::bind(&ProcUnderwaterComNode::Process, this));
         AUVID = configuration_.getNumberid();
     }
 
