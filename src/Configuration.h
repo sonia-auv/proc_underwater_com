@@ -40,12 +40,14 @@ namespace proc_underwater_com
         ~Configuration();
 
         int getNumberMission() const {return nbmissions;}
+        int getNumberid() const {return id;}
 
     private:
 
         ros::NodeHandlePtr nh;
 
         int nbmissions;
+        int id;
 
         void Deserialize();
         void SetParameter();

@@ -5,19 +5,10 @@
 
 typedef struct
 {
-    uint8_t packetNumber;
-    uint8_t packetId : 7;
-    uint8_t endOfPacket : 1;
-} Header_t;
-
-typedef struct
-{
-    Header_t header;
-    uint8_t killSwitchState : 4, missionSwitchState : 4;
-    uint16_t depth;
-    uint8_t missionId;
-    uint8_t missionState;
-    uint8_t torpedosState : 4, droppersState : 4;
+    uint8_t AUV_ID :7;
+    uint8_t rec_send : 1; // 0 = receive 1 = send
+    uint8_t cmd;
+    uint8_t data[6];
 } Modem_M64_t;
 
 #pragma pack(pop)

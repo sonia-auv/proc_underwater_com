@@ -31,6 +31,8 @@
 #include <std_msgs/Float32.h>
 #include <std_msgs/UInt64.h>
 #include <std_msgs/UInt8MultiArray.h>
+#include <std_msgs/Int8MultiArray.h>
+#include <std_srvs/Empty.h>
 #include <string>
 #include <thread>
 #include <mutex>
@@ -41,14 +43,14 @@
 #include "Configuration.h"
 #include "modem_data.h"
 #include <sonia_common/Modem_Definitions.h>
-// #include <sonia_common/ActuatorDoAction.h>
 #include <sonia_common/ModemSendCmd.h>
-// #include <sonia_common/ModemGetMissionList.h>
 #include <sonia_common/ModemUpdateMissionList.h>
 
 #define SIZE_UINT8 256
 
 namespace proc_underwater_com {
+
+enum command {mission,depth, sync};
 
 class ProcUnderwaterComNode
 {
@@ -61,21 +63,19 @@ class ProcUnderwaterComNode
 
     private:
 
-        void UnderwaterComInterpreterCallback(const std_msgs::UInt64 &msgg);
-        void SendMessage();
+        void UnderwaterComInterpreterCallback(const std_msgs::UInt64 &msg);
         bool SensorState(sonia_common::ModemSendCmd &srv);
-        // bool GetMissionList(sonia_common::ModemGetMissionList::Request &req, sonia_common::ModemGetMissionList::Response &res);
-        // bool UpdateMissionList(sonia_common::ModemUpdateMissionList::Request &req, sonia_common::ModemUpdateMissionList::Response &res);
 
-        void AuvStateKillInterpreter(const bool state);
         void AuvStateMissionInterpreter(const bool state);
         void AuvDepthInterpreter(const float_t data);
-        // void AuvIOInterpreter(const uint8_t data);
+        void AuvSyncInterpreter(const bool state);
 
-        void StateKillCallback(const std_msgs::Bool &msg);
+        void MissionStateCallback(const sonia_common::ModemUpdateMissionList &msg);
+        void SyncCallback(const std_msgs::Bool &msg);
         void StateMissionCallback(const std_msgs::Bool &msg);
         void DepthCallback(const std_msgs::Float32 &msg);
-        // void IOCallback(const sonia_common::ActuatorDoAction &msg);
+
+        bool DepthRequest(std_srvs::Empty::Request &DepthRsq, std_srvs::Empty::Response &DepthRsp);
 
         void Process();
         Modem_M64_t ConstructPacket(const uint64_t data);
@@ -83,48 +83,42 @@ class ProcUnderwaterComNode
         int8_t VerifyPacket(const Modem_M64_t packet);
 
         void InitMissionState(uint8_t size);
-        uint8_t SendMissionState();
         void UpdateMissionState(uint8_t index, int8_t state);
+        void UpdateMissionState_othersub(uint8_t index, int8_t state);
+        void SendDepth();
         
         ros::NodeHandlePtr nh_;
         Configuration configuration_;
 
         ros::Subscriber underwaterComSubscriber_;
-        ros::Subscriber stateKillSubcrisber_;
-        ros::Subscriber stateMissionSubcrisber_;
+        ros::Subscriber updateMissionSubcrisber_;
         ros::Subscriber depthSubcrisber_;
-        ros::Subscriber ioSubcrisber_;
+        ros::Subscriber syncSubscriber_;
 
         ros::Publisher underwaterComPublisher_;
-        ros::Publisher auvStateKillPublisher_;
-        ros::Publisher auvStateMissionPublisher_;
-        ros::Publisher auvDepthPublisher_;
-        // ros::Publisher auvIOPublisher_;
+        ros::Publisher auvMissionPublisher_;
+        ros::Publisher otherauvMissionPublisher_;
+        ros::Publisher syncPublisher_;
+        ros::Publisher DepthPublisher_;
 
         ros::ServiceClient underwaterComClient_;
-        // ros::ServiceServer underwaterComGetMissionList_;
-        // ros::ServiceServer underwaterComUpdateMissionList_;
+        ros::ServiceServer depthSrv_;
 
         std::thread process_thread;
         std::mutex sensor_mutex;
 
-        // sonia_common::IntersubCom intercom_msg_;
-        std_msgs::Bool stateKill_;
-        std_msgs::Bool stateMission_;
+        std_msgs::Bool stateMission_; 
         std_msgs::Float32 depth_;
 
-        std::string io_activation = "Droppers : STARBOARD-PORT // Torpedos : STARBOARD-PORT";
 
         // Refer to read me to understand the use for it
-        std::vector<int8_t> mission_state;
+        std_msgs::Int8MultiArray mission_state;
+        std_msgs::Int8MultiArray other_sub_mission_state;
         uint8_t index_ = 0;
         uint8_t size_mission_state;
-
-        // Data for the communication. Last value only
-        bool lastStateKill_ = false;
-        bool lastStateMission_ = false;
-        float_t lastDepth_ = 0.0;
-        uint8_t lastIO_ = 0;
+        uint8_t AUVID = 0;
+        float lastDepth_;
+        float other_sub_depth_;
 };
 }
 
