@@ -74,6 +74,7 @@ class ProcUnderwaterComNode
         void SyncCallback(const std_msgs::Bool &msg);
         void StateMissionCallback(const std_msgs::Bool &msg);
         void DepthCallback(const std_msgs::Float32 &msg);
+        void MissionInitCallback(const std_msgs::Int8MultiArray &msg);
 
         bool DepthRequest(std_srvs::Empty::Request &DepthRsq, std_srvs::Empty::Response &DepthRsp);
 
@@ -94,6 +95,7 @@ class ProcUnderwaterComNode
         ros::Subscriber updateMissionSubcrisber_;
         ros::Subscriber depthSubcrisber_;
         ros::Subscriber syncSubscriber_;
+        ros::Subscriber MissionInitSubscriber_;
 
         ros::Publisher underwaterComPublisher_;
         ros::Publisher auvMissionPublisher_;

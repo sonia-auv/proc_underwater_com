@@ -37,6 +37,7 @@ namespace proc_underwater_com
         depthSubcrisber_ = nh_->subscribe("/provider_depth/depth", 100, &ProcUnderwaterComNode::DepthCallback, this);
         updateMissionSubcrisber_ = nh_->subscribe("/proc_underwater_com/mission_state_msg", 100, &ProcUnderwaterComNode::MissionStateCallback, this);
         syncSubscriber_ = nh_->subscribe("/proc_underwater_com/send_sync_request", 100, &ProcUnderwaterComNode::SyncCallback, this);
+        MissionInitSubscriber_ = nh_->subscribe("/proc_underwater_com/mission_init", 100, &ProcUnderwaterComNode::MissionInitCallback, this);
         
         // Advertisers
         underwaterComPublisher_ = nh_->advertise<std_msgs::UInt64>("/proc_underwater_com/send_msgs", 100);
@@ -249,6 +250,10 @@ namespace proc_underwater_com
 
         send_msg.data = DeconstructPacket(send_packet);
         underwaterComPublisher_.publish(send_msg);
+     }
+
+     void ProcUnderwaterComNode::MissionInitCallback(const std_msgs::Int8MultiArray &msg){
+         mission_state.data = msg.data;
      }
 
 }
