@@ -18,8 +18,8 @@
 		"--cap-add=SYS_PTRACE",
 		"--security-opt",
 		"seccomp=unconfined",
+		"--env", "AUV=AUV8"
 		"--rm",
-		"--env", "AUV=AUV8",
 		"--network",
 		"host"
 	],
