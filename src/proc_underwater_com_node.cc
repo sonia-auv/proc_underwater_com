@@ -52,6 +52,9 @@ namespace proc_underwater_com
 
         InitMissionState(configuration_.getNumberMission());
         AUVID = configuration_.getNumberid();
+
+        ackknowledge_mission_completed_ = 0;
+        ackknowledge_sync_completed_ = 0;
     }
 
     // Node Destructor
@@ -115,7 +118,19 @@ namespace proc_underwater_com
                     case sync:
                         break;
                     case ack:
-                        ConfirmPacketReceived(packet.data[0]);
+                        if(data[0] == mission)
+                        {
+                            ROS_INFO_STREAM("Received acknowledge for mission.");
+                            ackknowledge_mission_completed_ = 0;
+                        }
+                        else if(data[0] == sync)
+                        {
+                            ackknowledge_sync_completed_ = 0;
+                        }
+                        else
+                        {
+                            ROS_DEBUG_STREAM("No acknowledge required for this command.");
+                        }
                         break;
                     default:
                         ROS_WARN_STREAM("Unknown command received: No action associated");
@@ -157,7 +172,8 @@ namespace proc_underwater_com
         lastDepth_ = msg.data;
     }
 
-    void ProcUnderwaterComNode::MissionInitCallback(const std_msgs::Int8MultiArray &msg){
+    void ProcUnderwaterComNode::MissionInitCallback(const std_msgs::Int8MultiArray &msg)
+    {
         if(uint16_t(msg.data.size()) == uint16_t(configuration_.getNumberMission()))
         {
             mission_state.data = msg.data;
@@ -213,9 +229,9 @@ namespace proc_underwater_com
         if(cmd == mission)
         {
             ackknowledge_mission_mutex_.lock();
-            ackknowledge_mission_completed_.store(1, std::memory_order_relaxed);
+            ackknowledge_mission_completed_++;
             ROS_INFO_STREAM("Mutex acquired for mission and waiting on feedback");
-            while(ackknowledge_mission_completed_.load(std::memory_order_relaxed) != 0)
+            while(ackknowledge_mission_completed_ != 0)
             {
                 underwaterComPublisher_.publish(msg);
                 ros::Duration(configuration_.getDelayAck()).sleep();
@@ -253,6 +269,7 @@ namespace proc_underwater_com
 
         send_msg.data = DeconstructPacket(send_packet);
         UpdateMissionState(msg.mission_id,msg.mission_state);
+        SendMessageToSensor(send_msg, mission);
      }
 
     void ProcUnderwaterComNode::SyncCallback(const std_msgs::Bool &msg)
@@ -329,11 +346,12 @@ namespace proc_underwater_com
     {
         if(cmd == mission)
         {
-            ackknowledge_mission_completed_.store(0, std::memory_order_relaxed);
+            ROS_INFO_STREAM("Received acknowledge for mission.");
+            ackknowledge_mission_completed_--;
         }
         else if(cmd == sync)
         {
-            ackknowledge_sync_completed_.store(0, std::memory_order_relaxed);
+            ackknowledge_sync_completed_--;
         }
         else
         {

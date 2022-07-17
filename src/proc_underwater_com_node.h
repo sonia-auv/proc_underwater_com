@@ -39,7 +39,6 @@
 #include <algorithm>
 #include <iterator>
 #include <errno.h>
-#include <atomic>
 
 #include "Configuration.h"
 #include "modem_data.h"
@@ -51,7 +50,7 @@
 
 namespace proc_underwater_com {
 
-enum command {mission,depth, sync, ack};
+enum command {mission, depth, sync, ack};
 
 class ProcUnderwaterComNode
 {
@@ -123,9 +122,9 @@ class ProcUnderwaterComNode
         float other_sub_depth_;
 
         // For syncing message
-        std::atomic<std::uint8_t> ackknowledge_mission_completed_;
+        uint8_t ackknowledge_mission_completed_;
         std::mutex ackknowledge_mission_mutex_;
-        std::atomic<std::uint8_t> ackknowledge_sync_completed_;
+        uint8_t ackknowledge_sync_completed_;
         std::mutex ackknowledge_sync_mutex_;
 };
 }

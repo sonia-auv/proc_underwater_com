@@ -45,7 +45,7 @@ namespace proc_underwater_com
 
         FindParameter("/settings/number_mission", nbmissions);
         FindParameter("/settings/id", id);
-        FindParameter("settings/delay_ac", delay_ack);
+        FindParameter("/settings/delay_ack", delay_ack);
 
         ROS_INFO("End deserialize params");
     }
