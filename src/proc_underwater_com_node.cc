@@ -256,7 +256,16 @@ namespace proc_underwater_com
     {
         if(uint16_t(msg.data.size()) == uint16_t(configuration_.getNumberMission()))
         {
-            mission_state.data = msg.data;
+            if(stoi(msg.layout.dim[0].label) == AUVID)
+            {
+                ROS_INFO_STREAM("Submarine mission list updated.");
+                mission_state.data = msg.data;
+            }
+            else
+            {
+                ROS_INFO_STREAM("Other submarine mission list updated.");
+                other_sub_mission_state.data = msg.data;
+            }
         }
         else
         {
@@ -294,12 +303,14 @@ namespace proc_underwater_com
         otherauvMissionPublisher_.publish(other_sub_mission_state); 
     }
 
-    int8_t ProcUnderwaterComNode::VerifyPacket(const Modem_M64_t packet){
-        
-        if(packet.AUV_ID == 7 || packet.AUV_ID == 8 ){
+    int8_t ProcUnderwaterComNode::VerifyPacket(const Modem_M64_t packet)
+    {    
+        if(packet.AUV_ID == 7 || packet.AUV_ID == 8 )
+        {
             return 1;
         } 
-        else{
+        else
+        {
             return 0;
         }
     }

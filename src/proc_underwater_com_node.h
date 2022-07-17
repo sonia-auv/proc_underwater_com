@@ -35,6 +35,7 @@
 #include <thread>
 #include <mutex>
 #include <chrono>
+#include <string>
 
 #include "Configuration.h"
 #include "modem_data.h"
