@@ -30,18 +30,15 @@
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float32.h>
 #include <std_msgs/UInt64.h>
-#include <std_msgs/UInt8MultiArray.h>
 #include <std_msgs/Int8MultiArray.h>
 #include <std_srvs/Empty.h>
-#include <string>
 #include <thread>
 #include <mutex>
-#include <algorithm>
-#include <iterator>
-#include <errno.h>
+#include <chrono>
 
 #include "Configuration.h"
 #include "modem_data.h"
+#include "SharedQueue.h"
 #include <sonia_common/Modem_Definitions.h>
 #include <sonia_common/ModemSendCmd.h>
 #include <sonia_common/ModemUpdateMissionList.h>
@@ -64,6 +61,8 @@ class ProcUnderwaterComNode
     private:
 
         void UnderwaterComInterpreterCallback(const std_msgs::UInt64 &msg);
+        void UnderwaterComInterpreter(); // Thread function
+        void SendMessageToSensor(); // Thread function
         bool SensorState(sonia_common::ModemSendCmd &srv);
 
         void AuvStateMissionInterpreter(const bool state);
@@ -81,8 +80,7 @@ class ProcUnderwaterComNode
         Modem_M64_t ConstructPacket(const uint64_t data);
         uint64_t DeconstructPacket(const Modem_M64_t packet);
         int8_t VerifyPacket(const Modem_M64_t packet);
-        bool SendMessageToSensor(const std_msgs::UInt64 &msg, uint8_t cmd);
-
+        
         void InitMissionState(uint8_t size);
         void UpdateMissionState(uint8_t index, int8_t state);
         void UpdateMissionState_othersub(uint8_t index, int8_t state);
@@ -108,24 +106,25 @@ class ProcUnderwaterComNode
         ros::ServiceClient underwaterComClient_;
         ros::ServiceServer depthSrv_;
 
-        std::thread process_thread;
-        std::mutex sensor_mutex;
-
         std_msgs::Bool stateMission_; 
         std_msgs::Float32 depth_;
+
+        std::thread interpretMessage_;
+        std::thread sendMessageToSensor_;
+        bool stop_thread = false;
+        SharedQueue<uint64_t> queue;
+        SharedQueue<Modem_M64_t> sendQueue_;
 
         // Refer to read me to understand the use for it
         std_msgs::Int8MultiArray mission_state;
         std_msgs::Int8MultiArray other_sub_mission_state;
         uint8_t AUVID = 0;
-        float lastDepth_;
-        float other_sub_depth_;
+        float lastDepth_ = 0;
+        float other_sub_depth_ = 0;
 
         // For syncing message
         uint8_t ackknowledge_mission_completed_;
-        std::mutex ackknowledge_mission_mutex_;
         uint8_t ackknowledge_sync_completed_;
-        std::mutex ackknowledge_sync_mutex_;
 };
 }
 

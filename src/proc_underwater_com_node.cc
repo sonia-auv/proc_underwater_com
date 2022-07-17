@@ -46,9 +46,13 @@ namespace proc_underwater_com
         syncPublisher_ =  nh_->advertise<std_msgs::Bool>("/proc_underwater_com/sync_requested", 100);
         DepthPublisher_ =  nh_->advertise<std_msgs::Float32>("/proc_underwater_com/other_sub_depth", 100);
 
-        // Service
+        // Services
         depthSrv_ = nh_->advertiseService("/proc_underwater_com/depth_request", &ProcUnderwaterComNode::DepthRequest, this);
         underwaterComClient_ = nh_->serviceClient<sonia_common::ModemSendCmd>("/provider_underwater_com/request");
+
+        // Threads
+        interpretMessage_ = std::thread(std::bind(&ProcUnderwaterComNode::UnderwaterComInterpreter, this));
+        sendMessageToSensor_ = std::thread(std::bind(&ProcUnderwaterComNode::SendMessageToSensor, this));
 
         InitMissionState(configuration_.getNumberMission());
         AUVID = configuration_.getNumberid();
@@ -58,7 +62,10 @@ namespace proc_underwater_com
     }
 
     // Node Destructor
-    ProcUnderwaterComNode::~ProcUnderwaterComNode(){}
+    ProcUnderwaterComNode::~ProcUnderwaterComNode()
+    {
+        stop_thread = true;
+    }
 
     // Spin
     void ProcUnderwaterComNode::Spin()
@@ -71,75 +78,148 @@ namespace proc_underwater_com
             r.sleep();
         }
     }
-
     void ProcUnderwaterComNode::UnderwaterComInterpreterCallback(const std_msgs::UInt64 &msg)
     {
-        Modem_M64_t packet = ConstructPacket(msg.data);
+        ROS_DEBUG_STREAM("Received message");
+        queue.push_back(msg.data);
+    }
+
+    void ProcUnderwaterComNode::UnderwaterComInterpreter()
+    {
+        Modem_M64_t packet;
         float_t auvDepth = 0;
         uint32_t temp = 0;
-        uint8_t read_write = packet.rec_send;
-        uint8_t data[] = {packet.data[0], packet.data[1], packet.data[2], packet.data[3]};
+        uint8_t read_write = 0;
+        uint8_t data[] = {0,0,0,0,0,0};
 
-        if(VerifyPacket(packet))
+        while(!stop_thread)
         {
-            if(read_write == 1)
+            if(!queue.empty())
             {
-                switch (packet.cmd)
+                packet = ConstructPacket(queue.get_n_pop_front());
+                auvDepth = 0;
+                temp = 0;
+                read_write = packet.rec_send;
+                
+                for(uint8_t i = 0; i < 4; ++i)
                 {
-                    case mission: 
-                        UpdateMissionState_othersub(packet.data[0], packet.data[1]);
-                        SendAckknowledge(packet.cmd);
-                        break;
-                    case depth:
-                        //request depth from other sub
-                        SendDepth();
-                        break;
-                    case sync: 
-                        AuvSyncInterpreter(packet.rec_send);
-                        SendAckknowledge(packet.cmd);
-                        break;
-                    default:
-                        ROS_WARN_STREAM("Unknown command received: No action associated");
-                        break;
+                    data[i] = packet.data[i];
                 }
-            }
-            else if(read_write == 0)
-            {
-                switch (packet.cmd)
+
+                if(VerifyPacket(packet))
                 {
-                    case mission:
-                        break;
-                    case depth:
-                        //receive depth from other sub and publish it
-                        memcpy(&temp,&data, sizeof(uint32_t));
-                        auvDepth = (float_t)temp / 100.0;
-                        AuvDepthInterpreter(auvDepth);
-                        break;
-                    case sync:
-                        break;
-                    case ack:
-                        if(data[0] == mission)
+                    if(read_write == 1)
+                    {
+                        switch (packet.cmd)
                         {
-                            ROS_INFO_STREAM("Received acknowledge for mission.");
-                            ackknowledge_mission_completed_ = 0;
+                            case mission: 
+                                UpdateMissionState_othersub(packet.data[0], packet.data[1]);
+                                SendAckknowledge(packet.cmd);
+                                break;
+                            case depth:
+                                //request depth from other sub
+                                SendDepth();
+                                break;
+                            case sync: 
+                                AuvSyncInterpreter(packet.rec_send);
+                                SendAckknowledge(packet.cmd);
+                                break;
+                            default:
+                                ROS_WARN_STREAM("Unknown command received: No action associated");
+                                break;
                         }
-                        else if(data[0] == sync)
+                    }
+                    else if(read_write == 0)
+                    {
+                        switch (packet.cmd)
                         {
-                            ackknowledge_sync_completed_ = 0;
+                            case mission:
+                                break;
+                            case depth:
+                                //receive depth from other sub and publish it
+                                memcpy(&temp,&data, sizeof(uint32_t));
+                                auvDepth = (float_t)temp / 100.0;
+                                AuvDepthInterpreter(auvDepth);
+                                break;
+                            case sync:
+                                break;
+                            case ack:
+                                if(data[0] == mission)
+                                {
+                                    ackknowledge_mission_completed_ = 0;
+                                }
+                                else if(data[0] == sync)
+                                {
+                                    ackknowledge_sync_completed_ = 0;
+                                }
+                                else
+                                {
+                                    ROS_DEBUG_STREAM("No acknowledge required for this command.");
+                                }
+                                break;
+                            default:
+                                ROS_WARN_STREAM("Unknown command received: No action associated");
+                                break;
                         }
-                        else
-                        {
-                            ROS_DEBUG_STREAM("No acknowledge required for this command.");
-                        }
-                        break;
-                    default:
-                        ROS_WARN_STREAM("Unknown command received: No action associated");
-                        break;
+                    }
+                    else
+                    {
+                        ROS_ERROR_STREAM("Error with the packet. Dropping packet");
+                    }
                 }
             }
             else
             {
-                ROS_ERROR_STREAM("Error with the packet. Dropping packet");
+                ros::Duration(0.1).sleep(); //ROSPARAM TO DO
+            }
+        }
+    }
+
+    void ProcUnderwaterComNode::SendMessageToSensor()
+    {
+        Modem_M64_t packet;
+        std_msgs::UInt64 msg;
+        std::chrono::seconds wait_period(configuration_.getDelayAck());
+
+        while(!stop_thread)
+        {
+            if(!sendQueue_.empty())
+            {
+                packet = sendQueue_.get_n_pop_front();
+                if(packet.cmd == mission)
+                {
+                    ackknowledge_mission_completed_++;
+                    msg.data = DeconstructPacket(packet);
+                    ROS_DEBUG_STREAM("Mutex acquired for mission and waiting on feedback");
+                    while(ackknowledge_mission_completed_ != 0)
+                    {
+                        underwaterComPublisher_.publish(msg);
+                        std::this_thread::sleep_for(wait_period);
+                    }
+                    ROS_DEBUG_STREAM("Mutex release for mission");
+                }
+                else if(packet.cmd == sync)
+                {
+                    ackknowledge_sync_completed_++;
+                    msg.data = DeconstructPacket(packet);
+                    ROS_DEBUG_STREAM("Mutex acquired for sync and waiting on feedback");
+                    while(ackknowledge_sync_completed_ != 0)
+                    {
+                        underwaterComPublisher_.publish(msg);
+                        std::this_thread::sleep_for(wait_period);
+                    }
+                    ROS_DEBUG_STREAM("Mutex release for sync");
+                }
+                else
+                {
+                    ROS_DEBUG_STREAM("Cmd doesn't require a acknowledge.");
+                    msg.data = DeconstructPacket(packet);
+                    underwaterComPublisher_.publish(msg);
+                }
+            }
+            else
+            {
+                ros::Duration(0.1).sleep(); //ROSPARAM TO DO
             }
         }
     }
@@ -224,34 +304,8 @@ namespace proc_underwater_com
         }
     }
 
-    bool ProcUnderwaterComNode::SendMessageToSensor(const std_msgs::UInt64 &msg, uint8_t cmd)
+    void ProcUnderwaterComNode::AuvSyncInterpreter(const bool state)
     {
-        if(cmd == mission)
-        {
-            ackknowledge_mission_mutex_.lock();
-            ackknowledge_mission_completed_++;
-            ROS_INFO_STREAM("Mutex acquired for mission and waiting on feedback");
-            while(ackknowledge_mission_completed_ != 0)
-            {
-                underwaterComPublisher_.publish(msg);
-                ros::Duration(configuration_.getDelayAck()).sleep();
-            }
-            ackknowledge_mission_mutex_.unlock();
-            ROS_INFO_STREAM("Mutex release for mission");
-        }
-        else if(cmd == sync)
-        {
-
-        }
-        else
-        {
-            ROS_DEBUG_STREAM("Cmd doesn't require a acknowledge.");
-            underwaterComPublisher_.publish(msg);
-        }
-        return true;
-    }
-
-    void ProcUnderwaterComNode::AuvSyncInterpreter(const bool state){
         std_msgs::Bool sync_status;
         sync_status.data = state;
         syncPublisher_.publish(sync_status);
@@ -260,16 +314,14 @@ namespace proc_underwater_com
     void ProcUnderwaterComNode::MissionStateCallback(const sonia_common::ModemUpdateMissionList &msg)
     {      
         Modem_M64_t send_packet;
-        std_msgs::UInt64 send_msg;
 
         send_packet.AUV_ID = AUVID; 
         send_packet.cmd = mission;
         send_packet.data[0] = msg.mission_id;
         send_packet.data[1] = msg.mission_state;
 
-        send_msg.data = DeconstructPacket(send_packet);
         UpdateMissionState(msg.mission_id,msg.mission_state);
-        SendMessageToSensor(send_msg, mission);
+        sendQueue_.push_back(send_packet);
      }
 
     void ProcUnderwaterComNode::SyncCallback(const std_msgs::Bool &msg)
@@ -277,36 +329,30 @@ namespace proc_underwater_com
         if (msg.data == true)
         {
             Modem_M64_t send_packet;
-            std_msgs::UInt64 send_msg;
 
             send_packet.AUV_ID = AUVID; 
             send_packet.cmd = sync;
             send_packet.rec_send = 1;
 
-            send_msg.data = DeconstructPacket(send_packet);
-            SendMessageToSensor(send_msg, sync);
+            sendQueue_.push_back(send_packet);
         }
     }
 
     bool ProcUnderwaterComNode::DepthRequest(std_srvs::Empty::Request &DepthRsq, std_srvs::Empty::Response &DepthRsp)
     {    
         Modem_M64_t send_packet;
-        std_msgs::UInt64 send_msg;
 
         send_packet.AUV_ID = AUVID; 
         send_packet.cmd = depth;
         send_packet.rec_send = 1;
 
-        send_msg.data = DeconstructPacket(send_packet);
-        underwaterComPublisher_.publish(send_msg);
-
+        sendQueue_.push_back(send_packet);
         return true;
     }
 
     void ProcUnderwaterComNode::SendDepth()
     {
         Modem_M64_t send_packet;
-        std_msgs::UInt64 send_msg;
         uint8_t data[4] = {0,0,0,0};
         uint32_t auvDepth;
         auvDepth = lastDepth_ * 100.0; 
@@ -321,8 +367,7 @@ namespace proc_underwater_com
         send_packet.data[2]=data[2];
         send_packet.data[3]=data[3];
 
-        send_msg.data = DeconstructPacket(send_packet);
-        underwaterComPublisher_.publish(send_msg);
+        sendQueue_.push_back(send_packet);
     }
 
     void ProcUnderwaterComNode::SendAckknowledge(uint8_t cmd)
@@ -339,6 +384,7 @@ namespace proc_underwater_com
         send_packet.data[3]=0;
 
         send_msg.data = DeconstructPacket(send_packet);
+        // Here we bypass the send thread to make sure that we don't get a deadlock
         underwaterComPublisher_.publish(send_msg);
     }
 
@@ -346,7 +392,7 @@ namespace proc_underwater_com
     {
         if(cmd == mission)
         {
-            ROS_INFO_STREAM("Received acknowledge for mission.");
+            ROS_DEBUG_STREAM("Received acknowledge for mission.");
             ackknowledge_mission_completed_--;
         }
         else if(cmd == sync)
