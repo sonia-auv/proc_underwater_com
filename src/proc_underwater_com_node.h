@@ -39,6 +39,7 @@
 #include <algorithm>
 #include <iterator>
 #include <errno.h>
+#include <atomic>
 
 #include "Configuration.h"
 #include "modem_data.h"
@@ -50,7 +51,7 @@
 
 namespace proc_underwater_com {
 
-enum command {mission,depth, sync};
+enum command {mission,depth, sync, ack};
 
 class ProcUnderwaterComNode
 {
@@ -78,15 +79,17 @@ class ProcUnderwaterComNode
 
         bool DepthRequest(std_srvs::Empty::Request &DepthRsq, std_srvs::Empty::Response &DepthRsp);
 
-        void Process();
         Modem_M64_t ConstructPacket(const uint64_t data);
         uint64_t DeconstructPacket(const Modem_M64_t packet);
         int8_t VerifyPacket(const Modem_M64_t packet);
+        bool SendMessageToSensor(const std_msgs::UInt64 &msg, uint8_t cmd);
 
         void InitMissionState(uint8_t size);
         void UpdateMissionState(uint8_t index, int8_t state);
         void UpdateMissionState_othersub(uint8_t index, int8_t state);
         void SendDepth();
+        void SendAckknowledge(uint8_t cmd);
+        void ConfirmPacketReceived(uint8_t cmd);
         
         ros::NodeHandlePtr nh_;
         Configuration configuration_;
@@ -112,15 +115,18 @@ class ProcUnderwaterComNode
         std_msgs::Bool stateMission_; 
         std_msgs::Float32 depth_;
 
-
         // Refer to read me to understand the use for it
         std_msgs::Int8MultiArray mission_state;
         std_msgs::Int8MultiArray other_sub_mission_state;
-        uint8_t index_ = 0;
-        uint8_t size_mission_state;
         uint8_t AUVID = 0;
         float lastDepth_;
         float other_sub_depth_;
+
+        // For syncing message
+        std::atomic<std::uint8_t> ackknowledge_mission_completed_;
+        std::mutex ackknowledge_mission_mutex_;
+        std::atomic<std::uint8_t> ackknowledge_sync_completed_;
+        std::mutex ackknowledge_sync_mutex_;
 };
 }
 
