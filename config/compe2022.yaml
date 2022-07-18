@@ -1,3 +1,4 @@
 #********** Driver Parameters ************
 
-/proc_underwater_com/settings/number_mission : 16
+/proc_underwater_com/settings/number_mission : 11
+/proc_underwater_com/settings/delay_ack : 5
