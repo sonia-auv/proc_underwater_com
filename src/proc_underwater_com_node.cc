@@ -260,11 +260,13 @@ namespace proc_underwater_com
             {
                 ROS_INFO_STREAM("Submarine mission list updated.");
                 mission_state.data = msg.data;
+                auvMissionPublisher_.publish(mission_state);
             }
             else
             {
                 ROS_INFO_STREAM("Other submarine mission list updated.");
                 other_sub_mission_state.data = msg.data;
+                otherauvMissionPublisher_.publish(other_sub_mission_state);                
             }
         }
         else
