@@ -134,6 +134,8 @@ namespace proc_underwater_com
                         switch (packet.cmd)
                         {
                             case mission:
+                                UpdateMissionState(packet.data[0], packet.data[1]);
+                                SendAckknowledge(packet.cmd);
                                 break;
                             case depth:
                                 //receive depth from other sub and publish it
@@ -261,12 +263,42 @@ namespace proc_underwater_com
                 ROS_INFO_STREAM("Submarine mission list updated.");
                 mission_state.data = msg.data;
                 auvMissionPublisher_.publish(mission_state);
+
+                int arraysize = sizeof(mission_state.data)/sizeof(mission_state.data[0]);
+
+                //Send all mission states of this sub to the other sub
+                for (uint8_t i = 0; i < arraysize; i++){
+
+                    Modem_M64_t send_packet;
+
+                    send_packet.AUV_ID = AUVID; 
+                    send_packet.cmd = mission;
+                    send_packet.rec_send =1;
+                    send_packet.data[0] = i;
+                    send_packet.data[1] = mission_state.data[i];
+                    sendQueue_.push_back(send_packet);
+                }
             }
             else
             {
                 ROS_INFO_STREAM("Other submarine mission list updated.");
                 other_sub_mission_state.data = msg.data;
-                otherauvMissionPublisher_.publish(other_sub_mission_state);                
+                otherauvMissionPublisher_.publish(other_sub_mission_state);     
+
+                int arraysize = sizeof(other_sub_mission_state.data)/sizeof(other_sub_mission_state.data[0]);
+
+                //Send all mission states to other sub
+                for (uint8_t i = 0; i < arraysize; i++){
+
+                    Modem_M64_t send_packet;
+
+                    send_packet.AUV_ID = AUVID; 
+                    send_packet.cmd = mission;
+                    send_packet.rec_send =0;
+                    send_packet.data[0] = i;
+                    send_packet.data[1] = other_sub_mission_state.data[i];
+                    sendQueue_.push_back(send_packet);
+                }           
             }
         }
         else
@@ -330,6 +362,7 @@ namespace proc_underwater_com
 
         send_packet.AUV_ID = AUVID; 
         send_packet.cmd = mission;
+        send_packet.rec_send =1;
         send_packet.data[0] = msg.mission_id;
         send_packet.data[1] = msg.mission_state;
 
