@@ -41,6 +41,7 @@ namespace proc_underwater_com
 
         int getNumberMission() const {return nbmissions;}
         int getNumberid() const {return id;}
+        int getDelayAck() const {return delay_ack;}
 
     private:
 
@@ -48,6 +49,7 @@ namespace proc_underwater_com
 
         int nbmissions;
         int id;
+        int delay_ack;
 
         void Deserialize();
         void SetParameter();
